@@ -330,6 +330,7 @@ function App() {
                   onChange={(e) =>
                     setNewFood({ ...newFood, name: e.target.value })
                   }
+                  autoFocus
                   placeholder="Food name..."
                   className="form-control shadow-none"
                   onKeyPress={(e) => e.key === "Enter" && addFood()}
