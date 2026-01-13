@@ -136,7 +136,7 @@ function App() {
     new Date().getFullYear() === currentDate.getFullYear();
 
   return (
-    <div className="min-vh-100 bg-light p-4">
+    <div className="min-vh-100 bg-light">
       <div className="container-xxl">
         {/* Header */}
         <div className="card shadow-sm border-0 p-4 mb-4">
@@ -187,7 +187,7 @@ function App() {
                 </div>
               </div>
               <div className="col-6 col-md-3 mb-3">
-                <div className="fw-bold mb-1" style={{ color: "purple" }}>
+                <div className="fw-bold mb-1" style={{ color: "#6A0DAD" }}>
                   <i className="bi bi-moon-stars"></i> Supper
                 </div>
                 <div className="text-muted d-flex flex-wrap gap-2 mt-2">
@@ -227,7 +227,7 @@ function App() {
             <button
               onClick={() => setShowAddFood(!showAddFood)}
               className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow small"
-              style={{ background: "purple" }}
+              style={{ background: "#6A0DAD" }}
             >
               <Plus size={20} />
               Add Food
@@ -277,7 +277,7 @@ function App() {
               </div>
             </div>
             <div className="col-6 col-md-3 mb-3">
-              <div className="fw-bold mb-1" style={{ color: "purple" }}>
+              <div className="fw-bold mb-1" style={{ color: "#6A0DAD" }}>
                 <i className="bi bi-moon-stars"></i> Supper
               </div>
               <div className="text-muted d-flex flex-wrap gap-2 mt-2">
@@ -350,7 +350,7 @@ function App() {
                 <button
                   onClick={addFood}
                   className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow"
-                  style={{ background: "purple" }}
+                  style={{ background: "#6A0DAD" }}
                 >
                   Add
                 </button>
@@ -441,7 +441,7 @@ function App() {
                         <div className="fw-bold mb-1">
                           <i
                             className="bi bi-moon-stars"
-                            style={{ color: "purple" }}
+                            style={{ color: "#6A0DAD" }}
                           ></i>
                         </div>
                         <div className="text-truncate small">
