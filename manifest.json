@@ -1,0 +1,24 @@
+{
+  "short_name": "MealPlan",
+  "name": "Meal Planner Pro",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#6A0DAD",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "scope": "/",
+  "description": "Plan your meals and track nutrition seamlessly."
+}
