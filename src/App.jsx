@@ -308,15 +308,18 @@ function App() {
           className="d-flex flex-md-row flex-column align-items-center shadow border p-0 bg-white rounded-2"
           style={{ maxWidth: "850px" }}
         >
+          <div className="w-100 d-none d-md-block"
+            style={{ aspectRatio: "4/5" }}>
           <img
-            style={{ aspectRatio: "4/5" }}
-            className="img-fluid w-50 object-cover"
+            className="img-fluid d-none d-md-block w-100 object-cover"
             src="/premium_photo-1711434824963-ca894373272e.avif"
             alt=""
           />
+
+          </div>
           {/* SIGN IN FORM */}
           {view === "login" && (
-            <form className="form-signin w-50 p-4" onSubmit={handleLogin}>
+            <form className="form-signin w-100 p-4" onSubmit={handleLogin}>
               <h1 className="h3 mb-3 font-weight-normal text-center">
                 Sign in
               </h1>
@@ -365,7 +368,7 @@ function App() {
 
           {/* PASSWORD RESET FORM */}
           {view === "reset" && (
-            <form className="form-reset w-50 p-4">
+            <form className="form-reset w-100 p-4">
               <h1 className="h3 mb-3 font-weight-normal text-center">
                 Reset Password
               </h1>
@@ -400,7 +403,7 @@ function App() {
 
           {/* SIGN UP FORM */}
           {view === "signup" && (
-            <form className="form-signup w-50 p-4" onSubmit={handleSignUp}>
+            <form className="form-signup w-100 p-4" onSubmit={handleSignUp}>
               <h1 className="h3 mb-3 font-weight-normal text-center">
                 Sign Up
               </h1>
