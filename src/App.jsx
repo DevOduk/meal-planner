@@ -1,7 +1,38 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { Plus, Calendar, LogOut } from "lucide-react";
 import { supabase } from "./supabaseClient";
-import { Alert, Avatar, Chip, CircularProgress, Snackbar } from "@mui/material";
+import {
+  Alert,
+  Avatar,
+  Backdrop,
+  BottomNavigation,
+  BottomNavigationAction,
+  Box,
+  Chip,
+  CircularProgress,
+  Fade,
+  Modal,
+  Snackbar,
+  Typography,
+} from "@mui/material";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import {
+  AddOutlined,
+  CalendarTodayOutlined,
+  HomeOutlined,
+  LogoutOutlined,
+} from "@mui/icons-material";
+
+const style = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  // width: 400,
+  bgcolor: "background.paper",
+  boxShadow: 4,
+  borderRadius: 4,
+  p: 4,
+};
 
 function App() {
   const defaultFoods = {
@@ -47,13 +78,15 @@ function App() {
       "Fruit Salad",
     ],
   };
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [open, setOpen] = useState([false, {}, ""]);
+  const handleClose = () => setOpen([false, {}, ""]);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null); // The Data (Meals, Onboarded, Name)
-  const [showAddFood, setShowAddFood] = useState(false);
   const [newFood, setNewFood] = useState({ name: "", category: "breakfast" });
   const [currentDate] = useState(new Date());
-
   const seededRandom = useCallback((seed) => {
     const x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
@@ -137,14 +170,32 @@ function App() {
     if (!session?.user?.id) return;
 
     const fetchProfile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("planner_profiles")
         .select("*")
         .eq("id", session.user.id)
         .maybeSingle();
 
+      if (error) {
+        setToast({
+          open: true,
+          message: "Server failed: " + error,
+          severity: "error",
+        });
+        return;
+      }
+      const userData = session.user;
+
+      console.log("before: ", data);
+      console.log("user: ", userData);
       if (data) {
-        setProfile(data); // This is your "source of truth" now
+        setProfile({
+          ...data,
+          email: userData?.email,
+          email_confirmed_at: userData?.email_confirmed_at,
+          created_at: userData?.created_at,
+          last_sign_in_at: userData?.last_sign_in_at,
+        }); // This is your "source of truth" now
       } else {
         setProfile({ onboarded: false }); // User exists but no profile yet
       }
@@ -189,6 +240,7 @@ function App() {
       }));
 
       setNewFood((prev) => ({ ...prev, name: "" }));
+      setCurrentPage(0);
     }
   };
 
@@ -228,10 +280,11 @@ function App() {
   };
 
   const { firstDay, daysInMonth } = getDaysInMonth();
-  const date = currentDate.getDate();
-  const monthName = currentDate.toLocaleDateString("en-US", {
-    month: "long",
+  const monthName = currentDate.toLocaleString("en-US", {
+    weekday: "long",
     year: "numeric",
+    month: "long",
+    day: "numeric",
   });
   const today = new Date().getDate();
   const isCurrentMonth =
@@ -248,8 +301,6 @@ function App() {
     if (reason === "clickaway") return;
     setToast({ ...toast, open: false });
   };
-
-  // console.log("my profile: ", profile);
 
   const Auth = () => {
     const [email, setEmail] = useState("");
@@ -300,154 +351,263 @@ function App() {
       setView("onboarding");
     };
 
+    const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
+      <div className="d-flex justify-content-center align-items-center min-vh-100 authBg">
         {view === "onboarding" && "We are onboardingbaby"}
         <div
           id="logreg-forms"
-          className="d-flex flex-md-row flex-column align-items-center shadow border p-0 bg-white rounded-2"
-          style={{ maxWidth: "850px" }}
+          className="authCard"
+          style={{ width: "100%", maxWidth: "480px", margin: "1rem" }}
         >
-          <div className="w-100 d-none d-md-block"
-            style={{ aspectRatio: "4/5" }}>
-          <img
-            className="img-fluid d-none d-md-block w-100 object-cover"
-            src="/premium_photo-1711434824963-ca894373272e.avif"
-            alt=""
-          />
-
-          </div>
           {/* SIGN IN FORM */}
           {view === "login" && (
-            <form className="form-signin w-100 p-4" onSubmit={handleLogin}>
-              <h1 className="h3 mb-3 font-weight-normal text-center">
-                Sign in
-              </h1>
-              <p className="text-center">
-                Log in to your account to start your meal planning.
-              </p>
-              <input
-                type="email"
-                className="form-control mb-3"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="form-control mb-3"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+            <form className="form-signin p-5" onSubmit={handleLogin}>
+              <div className="text-center mb-4">
+                <div className="authLogo mb-3">🍽️</div>
+                <h1 className="h2 fw-bold mb-2">Welcome back</h1>
+                <p className="text-muted small">
+                  Please enter your details to sign in
+                </p>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-600 small mb-2">
+                  Your Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-control authInput"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-600 small mb-2">Password</label>
+                <div className="position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control authInput"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="authPasswordToggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <i className="bi bi-eye-slash"></i>
+                    ) : (
+                      <i className="bi bi-eye"></i>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <label
+                    className="form-check-label small"
+                    htmlFor="rememberMe"
+                  >
+                    Remember me
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setView("reset")}
+                  className="authLink small"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
               <button
-                className="btn btn-success btn-block mb-2 w-100"
+                className="btn btn-dark w-100 fw-600 py-2 mb-4 authSignInBtn"
                 type="submit"
                 disabled={loading}
               >
-                <i className="fas fa-sign-in-alt"></i>{" "}
                 {loading ? "Loading..." : "Sign in"}
               </button>
+
               <div className="text-center">
-                <a href="#" onClick={() => setView("reset")} id="forgot_pswd">
-                  Forgot password?
-                </a>
+                <span className="text-muted small">
+                  Don't have an account?{" "}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setView("signup")}
+                  className="authLink small fw-600"
+                >
+                  Sign up
+                </button>
               </div>
-              <hr />
-              <button
-                className="btn btn-primary btn-block w-100"
-                type="button"
-                onClick={() => setView("signup")}
-              >
-                <i className="fas fa-user-plus"></i> Create New Account
-              </button>
             </form>
           )}
 
           {/* PASSWORD RESET FORM */}
           {view === "reset" && (
-            <form className="form-reset w-100 p-4">
-              <h1 className="h3 mb-3 font-weight-normal text-center">
-                Reset Password
-              </h1>
+            <form className="form-reset p-5">
+              <div className="text-center mb-4">
+                <div className="authLogo mb-3">🍽️</div>
+                <h1 className="h2 fw-bold mb-2">Reset Password</h1>
+                <p className="text-muted small">
+                  Enter your email to receive a reset link
+                </p>
+              </div>
 
-              <p className="text-center">
-                An reset link will be sent to your email{" "}
-                <strong>{email}</strong>.
-              </p>
-              <input
-                type="email"
-                className="form-control mb-3"
-                placeholder="Email address"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <div className="mb-4">
+                <label className="form-label fw-600 small mb-2">
+                  Your Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-control authInput"
+                  placeholder="Your Email Address"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
               <button
-                className="btn btn-primary btn-block mb-2 w-100"
+                className="btn btn-dark w-100 fw-600 py-3 mb-3 authSignInBtn"
                 type="submit"
               >
                 Reset Password
               </button>
-              <a
-                href="#"
+              <button
+                type="button"
                 onClick={() => setView("login")}
-                className="d-block text-center"
+                className="authLink d-block w-100 text-center small fw-600"
               >
-                <i className="fas fa-angle-left"></i> Back
-              </a>
+                Back to sign in
+              </button>
             </form>
           )}
 
           {/* SIGN UP FORM */}
           {view === "signup" && (
-            <form className="form-signup w-100 p-4" onSubmit={handleSignUp}>
-              <h1 className="h3 mb-3 font-weight-normal text-center">
-                Sign Up
-              </h1>
+            <form className="form-signup p-5" onSubmit={handleSignUp}>
+              <div className="text-center mb-4">
+                <div className="authLogo mb-3">🍽️</div>
+                <h1 className="h2 fw-bold mb-2">Create account</h1>
+                <p className="text-muted small">
+                  Join us to start planning your meals
+                </p>
+              </div>
 
-              <p className="text-center">
-                Enter details below to signup for an account.
-              </p>
-              <input
-                type="text"
-                className="form-control mb-3"
-                placeholder="Username e.g @User_577"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
-              <input
-                type="email"
-                className="form-control mb-3"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                className="form-control mb-3"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="mb-3">
+                <label className="form-label fw-600 small mb-2">Username</label>
+                <input
+                  type="text"
+                  className="form-control authInput"
+                  placeholder="e.g @User_577"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-600 small mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-control authInput"
+                  placeholder="Your Email Address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label fw-600 small mb-2">Password</label>
+                <div className="position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control authInput"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="authPasswordToggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <i className="bi bi-eye-slash"></i>
+                    ) : (
+                      <i className="bi bi-eye"></i>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="form-label fw-600 small mb-2">
+                  Confirm Password
+                </label>
+                <div className="position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-control authInput"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="authPasswordToggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <i className="bi bi-eye-slash"></i>
+                    ) : (
+                      <i className="bi bi-eye"></i>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <button
-                className="btn btn-primary btn-block mb-2 w-100"
+                className="btn btn-dark w-100 fw-600 py-2 mb-3 authSignInBtn"
                 type="submit"
               >
-                <i className="fas fa-user-plus"></i> Sign Up
+                Sign Up
               </button>
-              <a
-                href="#"
-                onClick={() => setView("login")}
-                className="d-block text-center"
-              >
-                <i className="fas fa-angle-left"></i> Back
-              </a>
+
+              <div className="text-center">
+                <span className="text-muted small">
+                  Already have an account?{" "}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setView("login")}
+                  className="authLink small fw-600"
+                >
+                  Sign in
+                </button>
+              </div>
             </form>
           )}
         </div>
@@ -633,7 +793,7 @@ function App() {
                                 });
                               }}
                               onDelete={() => {
-                                // console.log("removed");
+                                console.log("removed");
                               }}
                               style={{
                                 transition: "all 0.2s",
@@ -699,209 +859,507 @@ function App() {
         <div className="min-vh-100 bg-light">
           <div className="container-xxl">
             {/* Header */}
-            <div className="card shadow-sm border-0 p-4 mb-4">
-              <div className="d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center gap-2 text-secondary">
-                  <Calendar className="text-secondary" size={20} />
-                  <span className="h5 mb-0 fw-bold">
-                    {date}, {monthName}
-                  </span>
-                  <span className="text-muted">| Meal Planner</span>
-                </div>
-                <div className="small d-flex gap-2 align-items-center fw-semibold">
-                  <Avatar
-                    alt={profile?.display_name}
-                    sx={{ background: "black" }}
-                    src={profile?.avatar_url}
-                  />
-                  {profile?.display_name}
+            <div className="mainHeader mt-3 mb-5 d-flex flex-column justify-content-between">
+              <div className="d-flex mb-4 justify-content-between align-items-center gap-3">
+                <div className="">
+                  <div className="h4 fw-bold mb-1">
+                    Hello {profile?.display_name},
+                  </div>
 
-                  <button
-                    className="btn btn-link text-danger btn-sm p-0"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={23} title="Logout" />
-                  </button>
+                  <div className="small">Lets plan what to eat together.</div>
                 </div>
+                <div className="d-flex align-items-center gap-3 text-white">
+                  <div
+                    className="d-flex align-items-center gap-3"
+                    role="button"
+                    onClick={()=> setCurrentPage(2)}
+                  >
+                    <Avatar
+                      alt={profile?.display_name}
+                      sx={{ background: "rgba(255,255,255,0.18)" }}
+                      src={profile?.avatar_url}
+                      className="bg-light"
+                    />
+                    <div className="d-flex flex-column">
+                      <span className="fw-semibold">
+                        {/* {profile?.display_name} */}
+                        You
+                      </span>
+                      <span className="small text-white-50">Ready to plan</span>
+                    </div>
+                  </div>
+                  {/* to handle logout
+                  <LogOut onClic={handleLogout} size={20} title="Logout" /> */}
+                </div>
+              </div>
+              <div className="d-flex justify-content-end align-items-center gap-2 text-white-75">
+                <CalendarTodayOutlined size={20} />
+                <span className="fw-semibold">{monthName}</span>
               </div>
             </div>
+            {currentPage === 0 ? (
+              <section>
+                {todaysMeals && (
+                  <div className="card shadow-sm border-0 p-4 mb-4">
+                    <h5 className="fw-bold text-dark mb-2 mt-5">Today</h5>
+                    <span className="fw-semibold mb-3 small text-secondary">
+                      {monthName}
+                    </span>
+                    <div className="row row-cols-1 row-cols-md-4 g-3 small">
+                      <div className="col-6 col-md-3 mb-3">
+                        <div
+                          className="fw-bold mb-1"
+                          style={{ color: "orange" }}
+                        >
+                          <i className="bi bi-cloud-sun"></i> Breakfast
+                        </div>
+                        <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                          <div
+                            role="button"
+                            className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                            key={"breakfast"}
+                          >
+                            <i className="bi bi-check2-circle text-success">
+                              {" "}
+                            </i>{" "}
+                            {todaysMeals.breakfast}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-6 col-md-3 mb-3">
+                        <div
+                          className="fw-bold mb-1"
+                          style={{ color: "green" }}
+                        >
+                          <i className="bi bi-brightness-high"></i> Lunch
+                        </div>
+                        <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                          <div
+                            role="button"
+                            className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                            key={"lunch"}
+                          >
+                            <i className="bi bi-check2-circle text-success">
+                              {" "}
+                            </i>{" "}
+                            {todaysMeals.lunch}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-6 col-md-3 mb-3">
+                        <div
+                          className="fw-bold mb-1"
+                          style={{ color: "#6A0DAD" }}
+                        >
+                          <i className="bi bi-moon-stars"></i> Supper
+                        </div>
+                        <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                          <div
+                            role="button"
+                            className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                            key={"supper"}
+                          >
+                            <i className="bi bi-check2-circle text-success">
+                              {" "}
+                            </i>{" "}
+                            {todaysMeals.supper}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-6 col-md-3 mb-3">
+                        <div className="fw-bold text-danger mb-1">
+                          <i className="bi bi-apple"></i> Fruits/Salads
+                        </div>
+                        <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                          <div
+                            role="button"
+                            className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                            key={"fruit"}
+                          >
+                            <i className="bi bi-check2-circle text-success">
+                              {" "}
+                            </i>{" "}
+                            {todaysMeals.fruit}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-            {/* Legend */}
-            {todaysMeals && (
-              <div className="card shadow-sm border-0 p-4 mb-4">
-                <h5 className="fw-bold text-dark mb-3">Today</h5>
-                <div className="row row-cols-1 row-cols-md-4 g-3 small">
-                  <div className="col-6 col-md-3 mb-3">
-                    <div className="fw-bold mb-1" style={{ color: "orange" }}>
-                      <i className="bi bi-cloud-sun"></i> Breakfast
-                    </div>
-                    <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                      <span
-                        role="button"
-                        className="rounded-2 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
-                        key={"breakfast"}
-                      >
-                        <i className="bi bi-check2-circle text-success"> </i>{" "}
-                        {todaysMeals.breakfast}
-                      </span>
-                    </div>
+                <div className="card shadow-sm border-0 p-4 mb-4">
+                  <div className="alert alert-primary">
+                    <strong>Usage Tips! </strong> You can customize your meals
+                    below add, remove or modify existing items to match your
+                    preferences.
                   </div>
-                  <div className="col-6 col-md-3 mb-3">
-                    <div className="fw-bold mb-1" style={{ color: "green" }}>
-                      <i className="bi bi-brightness-high"></i> Lunch
-                    </div>
-                    <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                      <span
-                        role="button"
-                        className="rounded-2 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
-                        key={"lunch"}
-                      >
-                        <i className="bi bi-check2-circle text-success"> </i>{" "}
-                        {todaysMeals.lunch}
-                      </span>
-                    </div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="fw-bold text-dark m-0">Available Foods</h5>
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow small"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #6a0dad 0%, #392b8d 65%, #1f1a4b 100%)",
+                      }}
+                    >
+                      <AddOutlined size={20} />
+                      Add Food
+                    </button>
                   </div>
-                  <div className="col-6 col-md-3 mb-3">
-                    <div className="fw-bold mb-1" style={{ color: "#6A0DAD" }}>
-                      <i className="bi bi-moon-stars"></i> Supper
+                  <div className="row row-cols-1 row-cols-md-4 g-3 small">
+                    <div className="col-6 col-md-3 mb-3">
+                      <div className="fw-bold mb-1" style={{ color: "orange" }}>
+                        <i className="bi bi-cloud-sun"></i> Breakfast
+                      </div>
+                      <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                        {profile?.meals?.breakfast.map((breakfast, i) => (
+                          <div
+                            role="button"
+                            className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
+                            key={breakfast}
+                          >
+                            {i + 1}. {breakfast} &nbsp;
+                            <i
+                              className="bi bi-x text-danger"
+                              title="Remove this item"
+                              onClick={() => removeFood("breakfast", breakfast)}
+                            ></i>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                      <span
-                        role="button"
-                        className="rounded-2 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
-                        key={"supper"}
+                    <div className="col-6 col-md-3 mb-3">
+                      <div className="fw-bold mb-1" style={{ color: "green" }}>
+                        <i className="bi bi-brightness-high"></i> Lunch
+                      </div>
+                      <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                        {profile?.meals?.lunch.map((lunch, i) => (
+                          <div
+                            role="button"
+                            className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
+                            key={lunch}
+                          >
+                            {i + 1}. {lunch} &nbsp;
+                            <i
+                              className="bi bi-x text-danger"
+                              title="Remove this item"
+                              onClick={() => removeFood("lunch", lunch)}
+                            ></i>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3 mb-3">
+                      <div
+                        className="fw-bold mb-1"
+                        style={{ color: "#6A0DAD" }}
                       >
-                        <i className="bi bi-check2-circle text-success"> </i>{" "}
-                        {todaysMeals.supper}
-                      </span>
+                        <i className="bi bi-moon-stars"></i> Supper
+                      </div>
+                      <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                        {profile?.meals?.supper.map((supper, i) => (
+                          <div
+                            role="button"
+                            className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
+                            key={supper}
+                          >
+                            {i + 1}. {supper} &nbsp;
+                            <i
+                              className="bi bi-x text-danger"
+                              title="Remove this item"
+                              onClick={() => removeFood("supper", supper)}
+                            ></i>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="col-6 col-md-3 mb-3">
-                    <div className="fw-bold text-danger mb-1">
-                      <i className="bi bi-apple"></i> Fruits/Salads
-                    </div>
-                    <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                      <span
-                        role="button"
-                        className="rounded-2 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
-                        key={"fruit"}
-                      >
-                        <i className="bi bi-check2-circle text-success"> </i>{" "}
-                        {todaysMeals.fruit}
-                      </span>
+                    <div className="col-6 col-md-3 mb-3">
+                      <div className="fw-bold text-danger mb-1">
+                        <i className="bi bi-apple"></i> Fruits/Salads
+                      </div>
+                      <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                        {profile?.meals?.fruits.map((fruit, i) => (
+                          <div
+                            role="button"
+                            className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
+                            key={fruit}
+                          >
+                            {i + 1}. {fruit} &nbsp;
+                            <i
+                              className="bi bi-x text-danger"
+                              title="Remove this item"
+                              onClick={() => removeFood("fruits", fruit)}
+                            ></i>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Legend */}
-            <div className="card shadow-sm border-0 p-4 mb-4">
-              <div className="alert alert-primary">
-                <strong>Usage Tips! </strong> You can customize your meals below
-                add, remove or modify existing items.
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="fw-bold text-dark m-0">Available Foods</h5>
-                <button
-                  onClick={() => setShowAddFood(!showAddFood)}
-                  className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow small"
-                  style={{ background: "#6A0DAD" }}
-                >
-                  <Plus size={20} />
-                  Add Food
-                </button>
-              </div>
-              <div className="row row-cols-1 row-cols-md-4 g-3 small">
-                <div className="col-6 col-md-3 mb-3">
-                  <div className="fw-bold mb-1" style={{ color: "orange" }}>
-                    <i className="bi bi-cloud-sun"></i> Breakfast
-                  </div>
-                  <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                    {profile?.meals?.breakfast.map((breakfast) => (
-                      <span
-                        role="button"
-                        className="p-1 px-2 border rounded-2 bg-light"
-                        key={breakfast}
-                      >
-                        {breakfast} &nbsp;
-                        <i
-                          className="bi bi-x text-danger"
-                          title="Remove this item"
-                          onClick={() => removeFood("breakfast", breakfast)}
-                        ></i>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="col-6 col-md-3 mb-3">
-                  <div className="fw-bold mb-1" style={{ color: "green" }}>
-                    <i className="bi bi-brightness-high"></i> Lunch
-                  </div>
-                  <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                    {profile?.meals?.lunch.map((lunch) => (
-                      <span
-                        role="button"
-                        className="p-1 px-2 border rounded-2 bg-light"
-                        key={lunch}
-                      >
-                        {lunch} &nbsp;
-                        <i
-                          className="bi bi-x text-danger"
-                          title="Remove this item"
-                          onClick={() => removeFood("lunch", lunch)}
-                        ></i>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="col-6 col-md-3 mb-3">
-                  <div className="fw-bold mb-1" style={{ color: "#6A0DAD" }}>
-                    <i className="bi bi-moon-stars"></i> Supper
-                  </div>
-                  <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                    {profile?.meals?.supper.map((supper) => (
-                      <span
-                        role="button"
-                        className="p-1 px-2 border rounded-2 bg-light"
-                        key={supper}
-                      >
-                        {supper} &nbsp;
-                        <i
-                          className="bi bi-x text-danger"
-                          title="Remove this item"
-                          onClick={() => removeFood("supper", supper)}
-                        ></i>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="col-6 col-md-3 mb-3">
-                  <div className="fw-bold text-danger mb-1">
-                    <i className="bi bi-apple"></i> Fruits/Salads
-                  </div>
-                  <div className="text-muted d-flex flex-wrap gap-2 mt-2">
-                    {profile?.meals?.fruits.map((fruit) => (
-                      <span
-                        role="button"
-                        className="p-1 px-2 border rounded-2 bg-light"
-                        key={fruit}
-                      >
-                        {fruit} &nbsp;
-                        <i
-                          className="bi bi-x text-danger"
-                          title="Remove this item"
-                          onClick={() => removeFood("fruits", fruit)}
-                        ></i>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                {open[1] && (
+                  <Modal
+                    aria-labelledby="transition-modal-title"
+                    aria-describedby="transition-modal-description"
+                    open={open[0]}
+                    onClose={handleClose}
+                    closeAfterTransition
+                    slots={{ backdrop: Backdrop }}
+                    slotProps={{
+                      backdrop: {
+                        timeout: 500,
+                      },
+                    }}
+                  >
+                    <Fade in={open[0]}>
+                      <Box className="container" sx={style}>
+                        <div className="px-2">
+                          <h5 className="fw-bold text-dark mb-3">View Plan</h5>
+                          <div className="fw-semibold mb-4 small text-secondary">
+                            <strong>Date: </strong> {open[2]}
+                          </div>
+                          <div className="row row-cols-1 row-cols-md-4 g-3 small">
+                            <div className="col-6 col-md-3 mb-3">
+                              <div
+                                className="fw-bold mb-1"
+                                style={{ color: "orange" }}
+                              >
+                                <i className="bi bi-cloud-sun"></i> Breakfast
+                              </div>
+                              <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                                <div
+                                  role="button"
+                                  className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                                  key={"breakfast"}
+                                >
+                                  <i className="bi bi-check2-circle text-success">
+                                    {" "}
+                                  </i>{" "}
+                                  {open[1].breakfast}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col-6 col-md-3 mb-3">
+                              <div
+                                className="fw-bold mb-1"
+                                style={{ color: "green" }}
+                              >
+                                <i className="bi bi-brightness-high"></i> Lunch
+                              </div>
+                              <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                                <div
+                                  role="button"
+                                  className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                                  key={"lunch"}
+                                >
+                                  <i className="bi bi-check2-circle text-success">
+                                    {" "}
+                                  </i>{" "}
+                                  {open[1].lunch}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col-6 col-md-3 mb-3">
+                              <div
+                                className="fw-bold mb-1"
+                                style={{ color: "#6A0DAD" }}
+                              >
+                                <i className="bi bi-moon-stars"></i> Supper
+                              </div>
+                              <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                                <div
+                                  role="button"
+                                  className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                                  key={"supper"}
+                                >
+                                  <i className="bi bi-check2-circle text-success">
+                                    {" "}
+                                  </i>{" "}
+                                  {open[1].supper}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col-6 col-md-3 mb-3">
+                              <div className="fw-bold text-danger mb-1">
+                                <i className="bi bi-apple"></i> Fruits/Salads
+                              </div>
+                              <div className="text-muted d-flex flex-wrap gap-2 mt-2">
+                                <div
+                                  role="button"
+                                  className="rounded-2 w-100 fw-semibold alert-success d-flex align-items-center gap-2 p-1 px-2"
+                                  key={"fruit"}
+                                >
+                                  <i className="bi bi-check2-circle text-success">
+                                    {" "}
+                                  </i>{" "}
+                                  {open[1].fruit}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="d-flex justify-content-end mt-3">
+                            <button
+                              style={{ width: "15rem" }}
+                              className="btn small btn-dark fw-600 py-2 authSignInBtn"
+                              onClick={handleClose}
+                            >
+                              OK
+                            </button>
+                          </div>
+                        </div>
+                      </Box>
+                    </Fade>
+                  </Modal>
+                )}
 
-              {/* Add Food Form */}
-              {showAddFood && (
+                <div className="card shadow-sm border-0 p-4 calendar mb-5">
+                  <div style={{ overflowX: "auto" }}>
+                    <div
+                      className="d-grid gap-2 w-100 mb-5"
+                      style={{
+                        gridTemplateColumns: "repeat(7, 1fr)",
+                        // minWidth: "800px", // Prevents squishing and maintains alignment on small screens
+                      }}
+                    >
+                      {/* 1. Header Row (Sun-Sat) - Now sharing the same grid parent */}
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (day) => (
+                          <div
+                            key={day}
+                            className="text-center fw-bold text-muted py-2"
+                          >
+                            {day}
+                          </div>
+                        ),
+                      )}
+
+                      {/* 2. Empty cells for previous month padding */}
+                      {Array.from({ length: firstDay }).map((_, i) => (
+                        <div key={`empty-${i}`} className="" />
+                      ))}
+
+                      {/* 3. Calendar days */}
+                      {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const meals = mealPlan[day];
+                        const isToday = isCurrentMonth && day === today;
+
+                        return (
+                          <div
+                            key={day}
+                            className={`border rounded text-dark p-2 ${
+                              isToday
+                                ? "alert-success text-light border-success border-2 shadow"
+                                : "bg-white text-dark"
+                            }`}
+                            // style={{ minHeight: "120px" }}
+                            role="button"
+                            title={currentDate.toLocaleString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                            onClick={() =>
+                              setOpen([
+                                true,
+                                meals,
+                                currentDate.toLocaleString("en-US", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                }),
+                              ])
+                            }
+                          >
+                            <div
+                              className={`small fw-semibold text-end mb-1 fs-5 ${
+                                isToday ? "text-success" : "text-muted"
+                              }`}
+                            >
+                              {day ?? 0}
+                            </div>
+                            <div
+                              className="flex-column gap-1 d-none d-md-flex"
+                              style={{ fontSize: "0.75rem" }}
+                            >
+                              <div
+                                className="bg-opacity-25 rounded p-1 text-dark"
+                                // title="Breakfast"
+                              >
+                                <div className="fw-bold mb-1">
+                                  <i
+                                    className="bi bi-cloud-sun"
+                                    style={{ color: "orange" }}
+                                  ></i>
+                                </div>
+                                <div className="text-truncate small">
+                                  {meals.breakfast}
+                                </div>
+                              </div>
+                              <div
+                                className="bg-opacity-25 rounded p-1 text-dark"
+                                // title="Lunch"
+                              >
+                                <div className="fw-bold mb-1">
+                                  <i
+                                    className="bi bi-brightness-high"
+                                    style={{ color: "green" }}
+                                  ></i>
+                                </div>
+                                <div className="text-truncate small">
+                                  {meals.lunch}
+                                </div>
+                              </div>
+                              <div
+                                className="bg-opacity-25 rounded p-1 text-dark"
+                                // title="Supper"
+                              >
+                                <div className="fw-bold mb-1">
+                                  <i
+                                    className="bi bi-moon-stars"
+                                    style={{ color: "#6A0DAD" }}
+                                  ></i>
+                                </div>
+                                <div className="text-truncate small">
+                                  {meals.supper}
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                              className="bg-opacity-25 shadow-sm d-none d-md-flex alert-success px-2 small mt-1 align-items-center gap-2 small rounded p-1 text-dark"
+                              // title="Fruits"
+                            >
+                              <div className="fw-bold">
+                                <i className="bi bi-apple"></i>
+                              </div>
+                              <div className="text-truncate">{meals.fruit}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                {/* end of calendar */}
+              </section>
+            ) : currentPage === 1 ? (
+              <section>
+                <div>
+                  <span
+                    className="p-2 w-auto"
+                    role="button"
+                    onClick={() => setCurrentPage((value) => value - 1)}
+                  >
+                    <i className="bi bi-arrow-left"></i> &nbsp; Back
+                  </span>
+                </div>
+
+                {/* Add Food Form */}
                 <div className="bg-light p-3 rounded mb-3 mt-3 border">
+                  <p>Add New Food</p>
                   <div className="d-flex gap-2">
                     <input
                       type="text"
@@ -929,134 +1387,215 @@ function App() {
                     <button
                       onClick={addFood}
                       className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow"
-                      style={{ background: "#6A0DAD" }}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #6a0dad 0%, #392b8d 65%, #1f1a4b 100%)",
+                      }}
                     >
                       Add
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="card shadow-sm border-0 p-4 calendar">
-              <div style={{ overflowX: "auto" }}>
-                <div
-                  className="d-grid gap-2 w-100"
-                  style={{
-                    gridTemplateColumns: "repeat(7, 1fr)",
-                    minWidth: "800px", // Prevents squishing and maintains alignment on small screens
-                  }}
-                >
-                  {/* 1. Header Row (Sun-Sat) - Now sharing the same grid parent */}
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div
-                        key={day}
-                        className="text-center fw-bold text-muted py-2"
-                      >
-                        {day}
-                      </div>
-                    ),
-                  )}
-
-                  {/* 2. Empty cells for previous month padding */}
-                  {Array.from({ length: firstDay }).map((_, i) => (
-                    <div key={`empty-${i}`} className="ratio ratio-1x1" />
-                  ))}
-
-                  {/* 3. Calendar days */}
-                  {Array.from({ length: daysInMonth }).map((_, i) => {
-                    const day = i + 1;
-                    const meals = mealPlan[day];
-                    const isToday = isCurrentMonth && day === today;
-
-                    return (
-                      <div
-                        key={day}
-                        className={`border rounded text-dark p-2 ${
-                          isToday
-                            ? "alert-info text-light border-success border-2 shadow"
-                            : "bg-white text-dark"
-                        }`}
-                        style={{ minHeight: "120px" }}
-                      >
-                        <div
-                          className={`small fw-semibold text-end mb-1 fs-1 ${
-                            isToday ? "text-success" : "text-muted"
-                          }`}
-                        >
-                          {isToday && (
-                            <span className="small fs-6 text-muted">Today</span>
-                          )}{" "}
-                          {day}
-                        </div>
-                        <div
-                          className="d-flex flex-column gap-1"
-                          style={{ fontSize: "0.75rem" }}
-                        >
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                            title="Breakfast"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-cloud-sun"
-                                style={{ color: "orange" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals.breakfast}
-                            </div>
-                          </div>
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                            title="Lunch"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-brightness-high"
-                                style={{ color: "green" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals.lunch}
-                            </div>
-                          </div>
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                            title="Supper"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-moon-stars"
-                                style={{ color: "#6A0DAD" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals.supper}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          className="bg-opacity-25 shadow-sm d-flex alert-success px-2 small mt-1 align-items-center gap-2 small rounded p-1 text-dark"
-                          title="Fruits"
-                        >
-                          <div className="fw-bold">
-                            <i className="bi bi-apple"></i>
-                          </div>
-                          <div className="text-truncate">{meals.fruit}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+              </section>
+            ) : (
+              <section>
+                <div>
+                  <span
+                    className="p-2 w-auto"
+                    role="button"
+                    onClick={() => setCurrentPage(0)}
+                  >
+                    <i className="bi bi-arrow-left"></i> &nbsp; Back
+                  </span>
                 </div>
-              </div>
-            </div>
+
+                <div className="d-flex flex-column mt-3 gap-4">
+                  <div className="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+                    <div className="w-100">
+                      <h3 className="fw-bold mb-1 text-center">Account</h3>
+                      <p className="text-muted mb-0 small text-center">
+                        Manage your profile and sign out from the app.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="card shadow-sm border-0 p-4 mb-4">
+                    <div className="d-flex align-items-center gap-3 mb-4 flex-wrap">
+                      <Avatar
+                        sx={{
+                          bgcolor: "#6A0DAD",
+                          width: 72,
+                          height: 72,
+                          fontSize: "1.75rem",
+                        }}
+                        src={profile?.avatar_url}
+                      >
+                        {profile?.display_name?.[0]?.toUpperCase() || "U"}
+                      </Avatar>
+                      <div>
+                        <h4 className="mb-1">
+                          {profile?.display_name || "Unknown"}
+                        </h4>
+                        <div className="small text-muted">
+                          {profile?.gender || "Not specified"} |{" "}
+                          {profile?.age_group.toUpperCase()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="row gy-3">
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                            <i className="bi bi-person" style={{color: '#6A0DAD'}}></i> User ID
+                          </div>
+                          <div className="fw-semibold small text-dark">
+                            {profile?.id || "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                            <i className="bi bi-wifi" style={{color: '#6A0DAD'}}></i>  Status
+                          </div>
+                          <div className="fw-semibold small d-flex align-items-center gap-2 text-success">
+                            <div className="rounded-circle m-0 p-0 border-0" style={{width: '8px', height: '8px', background: '#33ff00'}}></div> <div>Online</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                            
+                            <i className="bi bi-calendar" style={{color: '#6A0DAD'}}></i> Date Joined
+                          </div>
+                          <div className="fw-semibold small text-dark">
+                            {profile?.created_at
+                              ? new Date(
+                                  profile.created_at,
+                                ).toLocaleString()
+                              : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                           
+                            <i className="bi bi-clock" style={{color: '#6A0DAD'}}></i>  Last Sigin
+                          </div>
+                          <div className="fw-semibold small text-dark">
+                            {profile?.last_sign_in_at
+                              ? new Date(
+                                  profile.last_sign_in_at,
+                                ).toLocaleString()
+                              : "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                            
+                            <i className="bi bi-envelope" style={{color: '#6A0DAD'}}></i> Email
+                          </div>
+                          <div className="fw-semibold small text-dark d-flex justify-content-between">
+                            {profile?.email || "Not available"} {profile?.email_confirmed_at ? <span className="text-success">Verified <i className="bi bi-check2-circle"></i></span>:<span className="text-danger">Not verified <i className="bi bi-x"></i></span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-uppercase small text-muted mb-2">
+                            
+                            <i className="bi bi-phone" style={{color: '#6A0DAD'}}></i> Phone
+                          </div>
+                          <div className="fw-semibold small text-dark d-flex justify-content-between">
+                            {profile?.phone || "Not available"} {profile?.identity_data?.phone_verified ? <span className="text-success">Verified <i className="bi bi-check2-circle"></i></span>:<span className="text-danger">Not verified <i className="bi bi-x"></i></span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        <div
+                          className="p-3 rounded-3 border"
+                          style={{ background: "#f7f2ff" }}
+                        >
+                          <div className="text-danger mb-2">
+                            Logout
+                          </div>
+                          <div className="fw-semibold small text-dark d-flex justify-content-between align-items-center">
+                            Logout now (This will clear you current session. You will need to log in again.)
+                            <button className="btn text-danger bg-light shadow-sm" onClick={handleLogout}><LogoutOutlined /></button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+            {/* Footer */}
+            <footer className="mb-5 text-center">
+              @Copyright Meal Planner 2026 Designed nd developed by DevOduk
+            </footer>
+            <br />
+            <br />
+            <br />
           </div>
         </div>
       ) : (
         <Auth />
+      )}
+
+      {profile && (
+        <BottomNavigation
+          className="shadow-lg bg-light"
+          value={currentPage}
+          showLabels
+          sx={{
+            position: "fixed",
+            bottom: 30,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1100,
+            width: "min(92%, 520px)",
+            borderRadius: "18px",
+            background: "#fff",
+            "& .Mui-selected": {
+              color: "#6A0DAD",
+              fontWeight: 600,
+            },
+          }}
+          onChange={(event, newValue) => {
+            setCurrentPage(newValue);
+          }}
+        >
+          <BottomNavigationAction label="Home" icon={<HomeOutlined />} />
+          <BottomNavigationAction label="Add New" icon={<AddOutlined />} />
+          <BottomNavigationAction
+            label="Account"
+            icon={<PersonOutlinedIcon />}
+          />
+        </BottomNavigation>
       )}
 
       <Snackbar
