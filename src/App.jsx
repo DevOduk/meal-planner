@@ -98,22 +98,82 @@ function App() {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const { breakfast, lunch, supper, fruits } = foodList;
 
+      // 1. Initialize History Buffers for each category
+      const history = {
+        breakfast: [],
+        lunch: [],
+        supper: [],
+        fruit: [],
+      };
+
       for (let day = 1; day <= daysInMonth; day++) {
         const seed = year * 10000 + month * 100 + day;
-        const breakfastIndex = Math.floor(
-          seededRandom(seed * 1) * breakfast.length,
+
+        // 2. Diversified Selection Helper
+        const getDiverseIndex = (
+          seedMultiplier,
+          list,
+          categoryHistory,
+          excludeItem = null,
+        ) => {
+          let index = Math.floor(
+            seededRandom(seed * seedMultiplier) * list.length,
+          );
+          let selection = list[index];
+
+          let attempts = 0;
+          // Check if selection exists in the last 5 days OR matches excludeItem (today's other meal)
+          while (
+            (categoryHistory.includes(selection) ||
+              selection === excludeItem) &&
+            attempts < list.length
+          ) {
+            index = (index + 1) % list.length;
+            selection = list[index];
+            attempts++;
+          }
+          return index;
+        };
+
+        // 3. Generate indices using the 5-day history
+        const bIndex = getDiverseIndex(1, breakfast, history.breakfast);
+        const lIndex = getDiverseIndex(2, lunch, history.lunch);
+
+        // Supper check: Avoid 5-day history AND today's lunch
+        const sIndex = getDiverseIndex(
+          3,
+          supper,
+          history.supper,
+          lunch[lIndex],
         );
-        const lunchIndex = Math.floor(seededRandom(seed * 2) * lunch.length);
-        const supperIndex = Math.floor(seededRandom(seed * 3) * supper.length);
-        const fruitIndex = Math.floor(seededRandom(seed * 4) * fruits.length);
+
+        const fIndex = getDiverseIndex(4, fruits, history.fruit);
+
+        // 4. Assign to plan
+        const selectedBreakfast = breakfast[bIndex];
+        const selectedLunch = lunch[lIndex];
+        const selectedSupper = supper[sIndex];
+        const selectedFruit = fruits[fIndex];
 
         plan[day] = {
-          breakfast: breakfast[breakfastIndex],
-          lunch: lunch[lunchIndex],
-          supper: supper[supperIndex],
-          fruit: fruits[fruitIndex],
+          breakfast: selectedBreakfast,
+          lunch: selectedLunch,
+          supper: selectedSupper,
+          fruit: selectedFruit,
         };
+
+        // 5. Update History (Maintain sliding window of 5)
+        const updateHistory = (cat, item) => {
+          history[cat].push(item);
+          if (history[cat].length > 5) history[cat].shift();
+        };
+
+        updateHistory("breakfast", selectedBreakfast);
+        updateHistory("lunch", selectedLunch);
+        updateHistory("supper", selectedSupper);
+        updateHistory("fruit", selectedFruit);
       }
+
       return plan;
     },
     [seededRandom],
@@ -664,26 +724,31 @@ function App() {
           onboarded: true,
         },
       }));
+      window.location.reload;
     };
 
     return (
       <div className="min-vh-100 d-flex flex-column justify-content-center align-items-center">
-        <div className="container onboarding-card">
-          <h5>Let's get started... </h5>
+        <div className="container onboarding-card border shadow rounded-5 p-4">
+          <h5 className="primary-text">WELCOME</h5>
+          <p className="text-muted">
+            Hello there, let's get started. This will take less than a
+            minute...{" "}
+          </p>
           {step === 1 && (
             <section>
               <h3>Step 1: Gender</h3>
               <div className="p-2 mt-4 d-flex gap-3 text-uppercase">
                 {["Male", "Female", "Other"].map((g) => (
                   <button
-                    className={`w-100 outline-o shadow-0 p-5 small`}
+                    className={`w-100 outline-0 shadow-sm rounded-4 p-5 small border-0`}
                     key={g}
                     onClick={() => {
                       setFormData({ ...formData, gender: g });
                     }}
                     style={{
                       background:
-                        formData?.gender === g ? "#6a0dada1" : "transparent",
+                        formData?.gender === g ? "#6a0dada1" : "gainsboro",
                       color: formData?.gender === g ? "white" : "black",
                     }}
                   >
@@ -701,7 +766,7 @@ function App() {
                   }}
                   onClick={() => setStep(2)}
                 >
-                  Continue
+                  Continue <i className="bi bi-arrow-right"></i>
                 </button>
               </div>
             </section>
@@ -710,17 +775,17 @@ function App() {
           {step === 2 && (
             <section>
               <h3>Step 2: Age Group</h3>
-              <div className="p-2 mt4 d-flex gap-3">
+              <div className="p-2 mt-4 d-flex gap-3">
                 {["Child", "Teen", "Adult", "Senior"].map((g) => (
                   <button
-                    className={`w-100 outline-o shadow-0 p-5 small`}
+                    className={`w-100 outline-0 shadow-sm rounded-4 p-5 small border-0`}
                     key={g}
                     onClick={() => {
                       setFormData({ ...formData, age_group: g });
                     }}
                     style={{
                       background:
-                        formData?.age_group === g ? "#6a0dada1" : "transparent",
+                        formData?.age_group === g ? "#6a0dada1" : "gainsboro",
                       color: formData?.age_group === g ? "white" : "black",
                     }}
                   >
@@ -738,7 +803,7 @@ function App() {
                     cursor: formData?.age_group ? "pointer" : "not-allowed",
                   }}
                 >
-                  Continue
+                  Continue <i className="bi bi-arrow-right"></i>
                 </button>
               </div>
             </section>
@@ -848,8 +913,8 @@ function App() {
       </div>
     );
   }
-
-  if (profile && profile?.onboarded === false) {
+  // change sign to ===
+  if (profile && profile?.onboarded !== false) {
     return <Onboarding session={session} setSession={setSession} />;
   }
 
@@ -872,7 +937,7 @@ function App() {
                   <div
                     className="d-flex align-items-center gap-3"
                     role="button"
-                    onClick={()=> setCurrentPage(2)}
+                    onClick={() => setCurrentPage(2)}
                   >
                     <Avatar
                       alt={profile?.display_name}
@@ -1244,7 +1309,16 @@ function App() {
                         const day = i + 1;
                         const meals = mealPlan[day];
                         const isToday = isCurrentMonth && day === today;
-
+                        const formattedDate = new Date(
+                          currentDate.getUTCFullYear(),
+                          currentDate.getMonth(),
+                          day,
+                        ).toLocaleString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        });
                         return (
                           <div
                             key={day}
@@ -1255,24 +1329,14 @@ function App() {
                             }`}
                             // style={{ minHeight: "120px" }}
                             role="button"
-                            title={currentDate.toLocaleString("en-US", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                            onClick={() =>
-                              setOpen([
-                                true,
-                                meals,
-                                currentDate.toLocaleString("en-US", {
-                                  weekday: "long",
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                }),
-                              ])
-                            }
+                            title={formattedDate}
+                            onClick={() => {
+                              const year = currentDate.getUTCFullYear();
+                              const month = currentDate.getMonth();
+                              const selectedDate = new Date(year, month, day);
+
+                              setOpen([true, meals, formattedDate]);
+                            }}
                           >
                             <div
                               className={`small fw-semibold text-end mb-1 fs-5 ${
@@ -1343,6 +1407,7 @@ function App() {
                     </div>
                   </div>
                 </div>
+
                 {/* end of calendar */}
               </section>
             ) : currentPage === 1 ? (
@@ -1450,7 +1515,11 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                            <i className="bi bi-person" style={{color: '#6A0DAD'}}></i> User ID
+                            <i
+                              className="bi bi-person"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            User ID
                           </div>
                           <div className="fw-semibold small text-dark">
                             {profile?.id || "N/A"}
@@ -1463,10 +1532,22 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                            <i className="bi bi-wifi" style={{color: '#6A0DAD'}}></i>  Status
+                            <i
+                              className="bi bi-wifi"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            Status
                           </div>
                           <div className="fw-semibold small d-flex align-items-center gap-2 text-success">
-                            <div className="rounded-circle m-0 p-0 border-0" style={{width: '8px', height: '8px', background: '#33ff00'}}></div> <div>Online</div>
+                            <div
+                              className="rounded-circle m-0 p-0 border-0"
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                background: "#33ff00",
+                              }}
+                            ></div>{" "}
+                            <div>Online</div>
                           </div>
                         </div>
                       </div>
@@ -1476,14 +1557,15 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                            
-                            <i className="bi bi-calendar" style={{color: '#6A0DAD'}}></i> Date Joined
+                            <i
+                              className="bi bi-calendar"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            Date Joined
                           </div>
                           <div className="fw-semibold small text-dark">
                             {profile?.created_at
-                              ? new Date(
-                                  profile.created_at,
-                                ).toLocaleString()
+                              ? new Date(profile.created_at).toLocaleString()
                               : "N/A"}
                           </div>
                         </div>
@@ -1494,8 +1576,11 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                           
-                            <i className="bi bi-clock" style={{color: '#6A0DAD'}}></i>  Last Sigin
+                            <i
+                              className="bi bi-clock"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            Last Sigin
                           </div>
                           <div className="fw-semibold small text-dark">
                             {profile?.last_sign_in_at
@@ -1512,11 +1597,23 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                            
-                            <i className="bi bi-envelope" style={{color: '#6A0DAD'}}></i> Email
+                            <i
+                              className="bi bi-envelope"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            Email
                           </div>
                           <div className="fw-semibold small text-dark d-flex justify-content-between">
-                            {profile?.email || "Not available"} {profile?.email_confirmed_at ? <span className="text-success">Verified <i className="bi bi-check2-circle"></i></span>:<span className="text-danger">Not verified <i className="bi bi-x"></i></span>}
+                            {profile?.email || "Not available"}{" "}
+                            {profile?.email_confirmed_at ? (
+                              <span className="text-success">
+                                Verified <i className="bi bi-check2-circle"></i>
+                              </span>
+                            ) : (
+                              <span className="text-danger">
+                                Not verified <i className="bi bi-x"></i>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1526,11 +1623,23 @@ function App() {
                           style={{ background: "#f7f2ff" }}
                         >
                           <div className="text-uppercase small text-muted mb-2">
-                            
-                            <i className="bi bi-phone" style={{color: '#6A0DAD'}}></i> Phone
+                            <i
+                              className="bi bi-phone"
+                              style={{ color: "#6A0DAD" }}
+                            ></i>{" "}
+                            Phone
                           </div>
                           <div className="fw-semibold small text-dark d-flex justify-content-between">
-                            {profile?.phone || "Not available"} {profile?.identity_data?.phone_verified ? <span className="text-success">Verified <i className="bi bi-check2-circle"></i></span>:<span className="text-danger">Not verified <i className="bi bi-x"></i></span>}
+                            {profile?.phone || "Not available"}{" "}
+                            {profile?.identity_data?.phone_verified ? (
+                              <span className="text-success">
+                                Verified <i className="bi bi-check2-circle"></i>
+                              </span>
+                            ) : (
+                              <span className="text-danger">
+                                Not verified <i className="bi bi-x"></i>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1539,12 +1648,16 @@ function App() {
                           className="p-3 rounded-3 border"
                           style={{ background: "#f7f2ff" }}
                         >
-                          <div className="text-danger mb-2">
-                            Logout
-                          </div>
+                          <div className="text-danger mb-2">Logout</div>
                           <div className="fw-semibold small text-dark d-flex justify-content-between align-items-center">
-                            Logout now (This will clear you current session. You will need to log in again.)
-                            <button className="btn text-danger bg-light shadow-sm" onClick={handleLogout}><LogoutOutlined /></button>
+                            Logout now (This will clear you current session. You
+                            will need to log in again.)
+                            <button
+                              className="btn text-danger bg-light shadow-sm"
+                              onClick={handleLogout}
+                            >
+                              <LogoutOutlined />
+                            </button>
                           </div>
                         </div>
                       </div>
