@@ -914,7 +914,7 @@ function App() {
     );
   }
   // change sign to ===
-  if (profile && profile?.onboarded !== false) {
+  if (profile && profile?.onboarded === false) {
     return <Onboarding session={session} setSession={setSession} />;
   }
 
