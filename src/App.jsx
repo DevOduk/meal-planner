@@ -547,7 +547,7 @@ function App() {
 
   const Auth = () => {
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("123456789");
+    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState("login"); // 'login', 'signup', 'reset'
     const [fullName, setFullName] = useState("");
