@@ -34,6 +34,12 @@ const style = {
   p: 4,
 };
 
+const others = [
+  { name: "Alice", profile_pic: "alice.jpg" },
+  { name: "Bob", profile_pic: "bob.jpg" },
+  { name: "Charlie", profile_pic: "charlie.jpg" },
+]; // Example number of other friends
+
 function App() {
   const defaultFoods = {
     breakfast: [
@@ -53,6 +59,7 @@ function App() {
       "Rice + Beef Stew",
       "Ugali + Fish",
       "Chapati + Chicken",
+      "Fries + Chips + Salad",
     ],
     supper: [
       "Ugali + Sukuma",
@@ -72,15 +79,17 @@ function App() {
       "Mango",
       "Watermelon",
       "Pineapple",
-      "Papaya",
+      "Lettuce",
       "Orange",
       "Avocado",
+      "Apples",
       "Fruit Salad",
     ],
   };
 
   const [currentPage, setCurrentPage] = useState(0);
   const [open, setOpen] = useState([false, {}, ""]);
+  const [error, setError] = useState([false, "", ""]);
   const handleClose = () => setOpen([false, {}, ""]);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,93 +101,247 @@ function App() {
     return x - Math.floor(x);
   }, []);
 
+  // const generateMealPlan = useCallback(
+  //   (year, month, foodList) => {
+  //     const plan = {};
+  //     const daysInMonth = new Date(year, month + 1, 0).getDate();
+  //     const { breakfast, lunch, supper, fruits } = foodList;
+
+  //     // 1. Initialize History Buffers for each category
+  //     const history = {
+  //       breakfast: [],
+  //       lunch: [],
+  //       supper: [],
+  //       fruit: [],
+  //     };
+
+  //     for (let day = 1; day <= daysInMonth; day++) {
+  //       const seed = year * 10000 + month * 100 + day;
+
+  //       // 2. Diversified Selection Helper
+  //       const getDiverseIndex = (
+  //         seedMultiplier,
+  //         list,
+  //         categoryHistory,
+  //         excludeItem = null,
+  //       ) => {
+  //         let index = Math.floor(
+  //           seededRandom(seed * seedMultiplier) * list.length,
+  //         );
+  //         let selection = list[index];
+
+  //         let attempts = 0;
+  //         // Check if selection exists in the last 5 days OR matches excludeItem (today's other meal)
+  //         while (
+  //           (categoryHistory.includes(selection) ||
+  //             selection === excludeItem) &&
+  //           attempts < list.length
+  //         ) {
+  //           index = (index + 1) % list.length;
+  //           selection = list[index];
+  //           attempts++;
+  //         }
+  //         return index;
+  //       };
+
+  //       // 3. Generate indices using the 5-day history
+  //       const bIndex = getDiverseIndex(1, breakfast, history.breakfast);
+  //       const lIndex = getDiverseIndex(2, lunch, (history.lunch).map((item) => item?.includes(" + ") ? item.split(" + ") : [item]).flat());
+
+  //       // Supper check: Avoid 5-day history AND today's lunch
+  //       const sIndex = getDiverseIndex(
+  //         3,
+  //         supper,
+  //         history.supper,
+  //         (lunch[lIndex])?.includes(" + ")
+  //           ? lunch[lIndex].split(" + ")[0] // If lunch has " + ", take the first part for comparison
+  //           : lunch[lIndex], // Otherwise, use it directly
+  //       );
+
+  //       const fIndex = getDiverseIndex(4, fruits, history.fruit);
+
+  //       // 4. Assign to plan
+  //       const selectedBreakfast = breakfast[bIndex];
+  //       const selectedLunch = lunch[lIndex];
+  //       const selectedSupper = supper[sIndex];
+  //       const selectedFruit = fruits[fIndex];
+
+  //       plan[day] = {
+  //         breakfast: selectedBreakfast,
+  //         lunch: selectedLunch,
+  //         supper: selectedSupper,
+  //         fruit: selectedFruit,
+  //       };
+
+  //       // 5. Update History (Maintain sliding window of 5)
+  //       const updateHistory = (cat, item) => {
+  //         history[cat].push(item);
+  //         if (history[cat].length > 5) history[cat].shift();
+  //       };
+
+  //       updateHistory("breakfast", selectedBreakfast);
+  //       updateHistory("lunch", selectedLunch);
+  //       updateHistory("supper", selectedSupper);
+  //       updateHistory("fruit", selectedFruit);
+  //     }
+
+  //     return plan;
+  //   },
+  //   [seededRandom],
+  // );
+
   const generateMealPlan = useCallback(
     (year, month, foodList) => {
       const plan = {};
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const { breakfast, lunch, supper, fruits } = foodList;
 
-      // 1. Initialize History Buffers for each category
+      // 1. Specialized History Buffers
       const history = {
         breakfast: [],
-        lunch: [],
-        supper: [],
         fruit: [],
+        recentMeals: [], // Tracks full strings (e.g., "Rice + Chicken") to stop back-to-back days
+        recentIngredients: [], // Tracks base items (e.g., "rice") with a short memory window
+      };
+
+      // Static safety windows optimized for your specific list sizes
+      const maxBreakfastHistory = Math.max(1, breakfast.length - 2); // Remembers last 5 days
+      // const maxFruitHistory = Math.max(1, fruits.length - 1);
+      // Remembers last 2 days
+      const maxFruitHistory = 2;
+      const maxMealHistory = 4; // Prevents exact lunch/supper combo duplication for 2 full days
+      const maxIngredientHistory = 8; // Remembers base ingredients for roughly 24 hours
+
+      // Helper to split and clean up meal ingredients safely
+      const getIngredients = (mealString) => {
+        if (!mealString) return [];
+        return mealString
+          .toLowerCase()
+          .split(/\s*\+\s*/)
+          .map((item) => item.trim());
       };
 
       for (let day = 1; day <= daysInMonth; day++) {
         const seed = year * 10000 + month * 100 + day;
 
-        // 2. Diversified Selection Helper
         const getDiverseIndex = (
           seedMultiplier,
           list,
-          categoryHistory,
-          excludeItem = null,
+          isMainMeal = false,
+          excludeIngredients = [],
         ) => {
-          let index = Math.floor(
-            seededRandom(seed * seedMultiplier) * list.length,
-          );
-          let selection = list[index];
+          const seedValue = seededRandom(seed * seedMultiplier);
 
-          let attempts = 0;
-          // Check if selection exists in the last 5 days OR matches excludeItem (today's other meal)
-          while (
-            (categoryHistory.includes(selection) ||
-              selection === excludeItem) &&
-            attempts < list.length
-          ) {
-            index = (index + 1) % list.length;
-            selection = list[index];
-            attempts++;
+          // --- NEW LOGIC FOR FRUITS & BREAKFAST ---
+          if (!isMainMeal) {
+            const targetHistory =
+              list === breakfast ? history.breakfast : history.fruit;
+
+            // 1. Gather all items from the list that are NOT in the history window
+            const validChoices = list.filter(
+              (item) => !targetHistory.includes(item),
+            );
+
+            // 2. If we have choices that don't violate history, pick randomly from THEM
+            if (validChoices.length > 0) {
+              const chosenItem =
+                validChoices[Math.floor(seedValue * validChoices.length)];
+              return list.indexOf(chosenItem);
+            }
+
+            // Fallback if history window is somehow completely full (impossible with window = 2 and list = 4)
+            return Math.floor(seedValue * list.length);
           }
-          return index;
+
+          // --- MAIN MEAL LOGIC (LUNCH & SUPPER) ---
+          // Keeps your working tiered lookup for complex broken-down ingredient strings
+          const initialIndex = Math.floor(seedValue * list.length);
+          let backupIndex = -1;
+
+          for (let i = 0; i < list.length; i++) {
+            const index = (initialIndex + i) % list.length;
+            const selection = list[index];
+            const currentIngredients = getIngredients(selection);
+
+            const conflictsWithHistory = currentIngredients.some((ing) =>
+              history.recentIngredients.includes(ing),
+            );
+            const conflictsWithToday = currentIngredients.some((ing) =>
+              excludeIngredients.includes(ing),
+            );
+            const duplicateMealCombo = history.recentMeals.includes(selection);
+
+            if (
+              !duplicateMealCombo &&
+              !conflictsWithHistory &&
+              !conflictsWithToday
+            ) {
+              return index;
+            }
+            if (
+              !duplicateMealCombo &&
+              !conflictsWithToday &&
+              backupIndex === -1
+            ) {
+              backupIndex = index;
+            }
+          }
+
+          if (backupIndex !== -1) return backupIndex;
+          return initialIndex;
         };
 
-        // 3. Generate indices using the 5-day history
-        const bIndex = getDiverseIndex(1, breakfast, history.breakfast);
-        const lIndex = getDiverseIndex(2, lunch, history.lunch);
+        // 3. Process Selections Sequential Order
+        const bIndex = getDiverseIndex(1, breakfast, false);
 
-        // Supper check: Avoid 5-day history AND today's lunch
-        const sIndex = getDiverseIndex(
-          3,
-          supper,
-          history.supper,
-          lunch[lIndex],
-        );
-
-        const fIndex = getDiverseIndex(4, fruits, history.fruit);
-
-        // 4. Assign to plan
-        const selectedBreakfast = breakfast[bIndex];
+        // Get Lunch
+        const lIndex = getDiverseIndex(2, lunch, true);
         const selectedLunch = lunch[lIndex];
-        const selectedSupper = supper[sIndex];
-        const selectedFruit = fruits[fIndex];
+        const lunchIngredients = getIngredients(selectedLunch);
 
+        // Get Supper (Evaluates lunch ingredients to prevent overlap)
+        const sIndex = getDiverseIndex(3, supper, true, lunchIngredients);
+        const selectedSupper = supper[sIndex];
+        const supperIngredients = getIngredients(selectedSupper);
+
+        const fIndex = getDiverseIndex(4, fruits, false);
+
+        // 4. Populate Plan
         plan[day] = {
-          breakfast: selectedBreakfast,
+          breakfast: breakfast[bIndex],
           lunch: selectedLunch,
           supper: selectedSupper,
-          fruit: selectedFruit,
+          fruit: fruits[fIndex],
         };
 
-        // 5. Update History (Maintain sliding window of 5)
-        const updateHistory = (cat, item) => {
-          history[cat].push(item);
-          if (history[cat].length > 5) history[cat].shift();
-        };
+        // 5. Commit Data to History Buffers
+        history.breakfast.push(breakfast[bIndex]);
+        if (history.breakfast.length > maxBreakfastHistory)
+          history.breakfast.shift();
 
-        updateHistory("breakfast", selectedBreakfast);
-        updateHistory("lunch", selectedLunch);
-        updateHistory("supper", selectedSupper);
-        updateHistory("fruit", selectedFruit);
+        history.fruit.push(fruits[fIndex]);
+        if (history.fruit.length > maxFruitHistory) history.fruit.shift();
+
+        // Main meals: Push full strings to history
+        history.recentMeals.push(selectedLunch, selectedSupper);
+        while (history.recentMeals.length > maxMealHistory) {
+          history.recentMeals.shift();
+        }
+
+        // Main meals: Push individual ingredients to history pool
+        history.recentIngredients.push(
+          ...lunchIngredients,
+          ...supperIngredients,
+        );
+        while (history.recentIngredients.length > maxIngredientHistory) {
+          history.recentIngredients.shift();
+        }
       }
 
       return plan;
     },
     [seededRandom],
   );
-
   const mealPlan = useMemo(() => {
     if (!session?.user?.id) return {};
 
@@ -246,8 +409,6 @@ function App() {
       }
       const userData = session.user;
 
-      console.log("before: ", data);
-      console.log("user: ", userData);
       if (data) {
         setProfile({
           ...data,
@@ -269,11 +430,27 @@ function App() {
 
   const addFood = async () => {
     const foodName = newFood.name.trim();
+    const currentMeals = profile?.meals || defaultFoods;
+    setError([false, "", ""]);
+
+    if (currentMeals[newFood.category].includes(foodName)) {
+      setToast({
+        open: true,
+        message: `The food "${foodName}" already exists in the ${newFood.category} list}!`,
+        severity: "warning",
+      });
+      setError([
+        true,
+        "addFood",
+        `The food "${foodName}" already exists in the ${newFood.category} list!`,
+      ]);
+
+      return;
+    }
     // Use profile and session.user.id as the requirements
     if (!foodName || !session?.user?.id) return;
 
     // 1. Source from profile state (fallback to defaultFoods if profile isn't loaded)
-    const currentMeals = profile?.meals || defaultFoods;
 
     const updatedMeals = {
       ...currentMeals,
@@ -301,6 +478,12 @@ function App() {
 
       setNewFood((prev) => ({ ...prev, name: "" }));
       setCurrentPage(0);
+
+      setToast({
+        open: true,
+        message: `Successfully added "${foodName}" to ${newFood.category} meals!`,
+        severity: "success",
+      });
     }
   };
 
@@ -730,15 +913,15 @@ function App() {
     return (
       <div className="min-vh-100 d-flex flex-column justify-content-center align-items-center">
         <div className="container onboarding-card border shadow rounded-5 p-4">
-          <h5 className="primary-text">WELCOME</h5>
+          <h5 className="primary-text fw-bold">WELCOME</h5>
           <p className="text-muted">
             Hello there, let's get started. This will take less than a
             minute...{" "}
           </p>
           {step === 1 && (
             <section>
-              <h3>Step 1: Gender</h3>
-              <div className="p-2 mt-4 d-flex gap-3 text-uppercase">
+              <h3>Gender</h3>
+              <div className="p-2 mt-4 mb-2 d-flex flex-wrap flex-md-nowrap gap-3">
                 {["Male", "Female", "Other"].map((g) => (
                   <button
                     className={`w-100 outline-0 shadow-sm rounded-4 p-5 small border-0`}
@@ -774,8 +957,8 @@ function App() {
 
           {step === 2 && (
             <section>
-              <h3>Step 2: Age Group</h3>
-              <div className="p-2 mt-4 d-flex gap-3">
+              <h3>Age Group</h3>
+              <div className="p-2 mt-4 mb-2 d-flex flex-wrap flex-md-nowrap gap-3">
                 {["Child", "Teen", "Adult", "Senior"].map((g) => (
                   <button
                     className={`w-100 outline-0 shadow-sm rounded-4 p-5 small border-0`}
@@ -817,10 +1000,17 @@ function App() {
               );
               return (
                 <section>
-                  <h3>Step 3: Starter Pack</h3>
-                  <p>Select at least 3 meals for each category</p>
+                  <h3>Starter Pack</h3>
+                  <p className="text-muted small">
+                    Select at least 3 meals for each category. You can select
+                    more if you like. You can always modify your selection
+                    later.
+                  </p>
                   {Object.keys(defaultFoods).map((category) => (
-                    <div key={category} style={{ marginBottom: "40px" }}>
+                    <div
+                      key={category}
+                      className="mb-4 bg-light p-2 border-left border-2 border-primary rounded"
+                    >
                       <h4
                         style={{
                           textTransform: "uppercase",
@@ -831,7 +1021,7 @@ function App() {
                         {category}
                       </h4>
                       <div
-                        className="py-2 gap-3"
+                        className="py-1 gap-2"
                         style={{ display: "flex", flexWrap: "wrap" }}
                       >
                         {defaultFoods[category].map((food) => {
@@ -918,6 +1108,7 @@ function App() {
     return <Onboarding session={session} setSession={setSession} />;
   }
 
+  // console.log("default: ", defaultFoods[newFood.category], "profile: ", profile?.meals?.[newFood.category], "todays: ", todaysMeals);
   return (
     <>
       {profile?.onboarded !== undefined ? (
@@ -1082,7 +1273,7 @@ function App() {
                           <div
                             role="button"
                             className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
-                            key={breakfast}
+                            key={i}
                           >
                             {i + 1}. {breakfast} &nbsp;
                             <i
@@ -1092,6 +1283,17 @@ function App() {
                             ></i>
                           </div>
                         ))}
+                        <div
+                          role="button"
+                          title="Add new Breakfast item"
+                          className="p-1 w-100 text-primary border-primary px-2 border rounded-2 mt-2 bg-transparent justify-content-center d-flex align-items-center"
+                          onClick={() => {
+                            setCurrentPage(1);
+                            setNewFood({ ...newFood, category: "breakfast" });
+                          }}
+                        >
+                          <AddOutlined size={20} />
+                        </div>
                       </div>
                     </div>
                     <div className="col-6 col-md-3 mb-3">
@@ -1103,7 +1305,7 @@ function App() {
                           <div
                             role="button"
                             className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
-                            key={lunch}
+                            key={i}
                           >
                             {i + 1}. {lunch} &nbsp;
                             <i
@@ -1113,6 +1315,17 @@ function App() {
                             ></i>
                           </div>
                         ))}
+                        <div
+                          role="button"
+                          title="Add new Lunch item"
+                          className="p-1 w-100 text-primary border-primary px-2 border rounded-2 mt-2 bg-transparent justify-content-center d-flex align-items-center"
+                          onClick={() => {
+                            setCurrentPage(1);
+                            setNewFood({ ...newFood, category: "lunch" });
+                          }}
+                        >
+                          <AddOutlined size={20} />
+                        </div>
                       </div>
                     </div>
                     <div className="col-6 col-md-3 mb-3">
@@ -1127,7 +1340,7 @@ function App() {
                           <div
                             role="button"
                             className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
-                            key={supper}
+                            key={i}
                           >
                             {i + 1}. {supper} &nbsp;
                             <i
@@ -1137,6 +1350,18 @@ function App() {
                             ></i>
                           </div>
                         ))}
+
+                        <div
+                          role="button"
+                          title="Add new Supper item"
+                          className="p-1 w-100 text-primary border-primary px-2 border rounded-2 mt-2 bg-transparent justify-content-center d-flex align-items-center"
+                          onClick={() => {
+                            setCurrentPage(1);
+                            setNewFood({ ...newFood, category: "supper" });
+                          }}
+                        >
+                          <AddOutlined size={20} />
+                        </div>
                       </div>
                     </div>
                     <div className="col-6 col-md-3 mb-3">
@@ -1148,7 +1373,7 @@ function App() {
                           <div
                             role="button"
                             className="p-1 w-100 px-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
-                            key={fruit}
+                            key={i}
                           >
                             {i + 1}. {fruit} &nbsp;
                             <i
@@ -1158,6 +1383,18 @@ function App() {
                             ></i>
                           </div>
                         ))}
+
+                        <div
+                          role="button"
+                          title="Add new Fruits/Salads item"
+                          className="p-1 w-100 text-primary border-primary px-2 border rounded-2 mt-2 bg-transparent justify-content-center d-flex align-items-center"
+                          onClick={() => {
+                            setCurrentPage(1);
+                            setNewFood({ ...newFood, category: "fruits" });
+                          }}
+                        >
+                          <AddOutlined size={20} />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1336,6 +1573,12 @@ function App() {
                               const selectedDate = new Date(year, month, day);
 
                               setOpen([true, meals, formattedDate]);
+                              console.log(
+                                "Selected date:",
+                                selectedDate,
+                                "Meals: ",
+                                meals,
+                              );
                             }}
                           >
                             <div
@@ -1360,7 +1603,7 @@ function App() {
                                   ></i>
                                 </div>
                                 <div className="text-truncate small">
-                                  {meals.breakfast}
+                                  {meals.breakfast || "?"}
                                 </div>
                               </div>
                               <div
@@ -1374,7 +1617,7 @@ function App() {
                                   ></i>
                                 </div>
                                 <div className="text-truncate small">
-                                  {meals.lunch}
+                                  {meals.lunch || "?"}
                                 </div>
                               </div>
                               <div
@@ -1388,7 +1631,7 @@ function App() {
                                   ></i>
                                 </div>
                                 <div className="text-truncate small">
-                                  {meals.supper}
+                                  {meals.supper || "?"}
                                 </div>
                               </div>
                             </div>
@@ -1399,7 +1642,9 @@ function App() {
                               <div className="fw-bold">
                                 <i className="bi bi-apple"></i>
                               </div>
-                              <div className="text-truncate">{meals.fruit}</div>
+                              <div className="text-truncate">
+                                {meals.fruit || "?"}
+                              </div>
                             </div>
                           </div>
                         );
@@ -1409,6 +1654,38 @@ function App() {
                 </div>
 
                 {/* end of calendar */}
+
+                <div className="card shadow-sm border-0 p-4 mb-4">
+                  <h5 className="fw-bold text-dark m-0 mb-3">Invite Friends</h5>
+                  <span className="fw-semibold mb-3 small text-secondary">
+                    Share the joy of meal planning with your loved ones!
+                  </span>
+                  <div className="d-flex flex-wrap gap-3 align-items-center">
+                    {/* you  */}
+                    <Avatar
+                      style={{ width: 70, height: 70 }}
+                      alt={profile?.display_name}
+                      src={profile?.avatar_url}
+                      title={`${profile?.display_name} (You)`}
+                      className="border shadow-sm border-2 border-primary"
+                    />
+                    {others.map((friend, index) => (
+                      <Avatar
+                        title={friend.name}
+                        src={friend.profile_pic}
+                        key={index}
+                        style={{ width: 70, height: 70 }}
+                        className="border shadow-sm border-2 border-light"
+                      />
+                    ))}
+                    <button
+                      style={{ width: 50, height: 50 }}
+                      className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
+                    >
+                      <AddOutlined size={20} />
+                    </button>
+                  </div>
+                </div>
               </section>
             ) : currentPage === 1 ? (
               <section>
@@ -1424,40 +1701,87 @@ function App() {
 
                 {/* Add Food Form */}
                 <div className="bg-light p-3 rounded mb-3 mt-3 border">
-                  <p>Add New Food</p>
-                  <div className="d-flex gap-2">
-                    <input
-                      type="text"
-                      value={newFood.name}
-                      onChange={(e) =>
-                        setNewFood({ ...newFood, name: e.target.value })
-                      }
-                      autoFocus
-                      placeholder="Food name..."
-                      className="form-control shadow-none"
-                      onKeyPress={(e) => e.key === "Enter" && addFood()}
-                    />
-                    <select
-                      value={newFood.category}
-                      onChange={(e) =>
-                        setNewFood({ ...newFood, category: e.target.value })
-                      }
-                      className="form-select w-auto shadow-none"
-                    >
-                      <option value="breakfast">Breakfast</option>
-                      <option value="lunch">Lunch</option>
-                      <option value="supper">Supper</option>
-                      <option value="fruits">Fruits/Salads</option>
-                    </select>
+                  <p className="form-label mb-2">
+                    Add New Food (Use " + " to separate food combinations i.e
+                    Fries + Chips + Salad)
+                  </p>
+
+                  <div className="row gx-3 gy-3 align-items-center">
+                    <div className="col-12 col-md-5">
+                      <select
+                        value={newFood.category}
+                        onChange={(e) =>
+                          setNewFood({ ...newFood, category: e.target.value })
+                        }
+                        className="form-select shadow-none"
+                      >
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="supper">Supper</option>
+                        <option value="fruits">Fruits/Salads</option>
+                      </select>
+                    </div>
+                    <div className="col-12 col-md-7">
+                      <input
+                        type="text"
+                        value={newFood.name}
+                        onChange={(e) =>
+                          setNewFood({ ...newFood, name: e.target.value })
+                        }
+                        autoFocus
+                        placeholder="Food name..."
+                        className="form-control shadow-none"
+                        onKeyPress={(e) => e.key === "Enter" && addFood()}
+                      />
+                    </div>
+                    {error[0] && error[1] === "addFood" && (
+                      <div
+                        className="alert alert-danger mt-4 p-2 px-3 text-small col-12"
+                        role="alert"
+                      >
+                        {error[2]}
+                      </div>
+                    )}
+                    <div className="col-12 d-flex gap-3 mb-3 justify-content-start align-items-center flex-wrap">
+                      <p className="form-label fw-semibold m-0">Quick Add: </p>
+                      <div className="text-danger d-flex flex-row-reverse gap-2">
+                        {defaultFoods[newFood.category]?.filter(
+                          (food) =>
+                            !profile?.meals[newFood.category]?.includes(food),
+                        ).length > 0
+                          ? defaultFoods[newFood.category]
+                              ?.filter(
+                                (food) =>
+                                  !profile?.meals[newFood.category]?.includes(
+                                    food,
+                                  ),
+                              )
+                              .map((food) => (
+                                <div
+                                  role="button"
+                                  key={food}
+                                  onClick={() =>
+                                    setNewFood({ ...newFood, name: food })
+                                  }
+                                  className="p-1 text-primary border border-primary rounded-2 px-3 small d-flex align-items-center justify-content-center gap-2 shadow-0"
+                                >
+                                  {food}
+                                </div>
+                              ))
+                          : "No suggestions available"}
+                      </div>
+                    </div>
+
                     <button
                       onClick={addFood}
-                      className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow"
+                      className="p-2 px-4 text-light justify-content-center border-0 rounded-3 d-flex align-items-center ms-auto gap-2 shadow col-12 col-md-0"
                       style={{
                         background:
                           "linear-gradient(135deg, #6a0dad 0%, #392b8d 65%, #1f1a4b 100%)",
                       }}
                     >
-                      Add
+                      <AddOutlined size={20} />
+                      Add Food
                     </button>
                   </div>
                 </div>
@@ -1664,11 +1988,43 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                <div className="card shadow-sm border-0 p-4 mb-4">
+                  <h5 className="fw-bold text-dark m-0 mb-3">Invite Friends</h5>
+                  <span className="fw-semibold mb-3 small text-secondary">
+                    Share the joy of meal planning with your loved ones!
+                  </span>
+                  <div className="d-flex flex-wrap gap-3 align-items-center">
+                    {/* you  */}
+                    <Avatar
+                      style={{ width: 70, height: 70 }}
+                      alt={profile?.display_name}
+                      src={profile?.avatar_url}
+                      title={`${profile?.display_name} (You)`}
+                      className="border shadow-sm border-2 border-primary"
+                    />
+                    {others.map((friend, index) => (
+                      <Avatar
+                        title={friend.name}
+                        src={friend.profile_pic}
+                        key={index}
+                        style={{ width: 70, height: 70 }}
+                        className="border shadow-sm border-2 border-light"
+                      />
+                    ))}
+                    <button
+                      style={{ width: 50, height: 50 }}
+                      className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
+                    >
+                      <AddOutlined size={20} />
+                    </button>
+                  </div>
+                </div>
               </section>
             )}
             {/* Footer */}
             <footer className="mb-5 text-center">
-              @Copyright Meal Planner 2026 Designed nd developed by DevOduk
+              @Copyright Meal Planner 2026 Designed and developed by DevOduk
             </footer>
             <br />
             <br />
@@ -1713,7 +2069,7 @@ function App() {
 
       <Snackbar
         open={toast.open}
-        autoHideDuration={4000}
+        autoHideDuration={7000}
         onClose={handleCloseToast}
         anchorOrigin={{ vertical: "top", horizontal: "center" }} // Top center placement
       >
