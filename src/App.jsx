@@ -4,6 +4,7 @@ import {
   Alert,
   Avatar,
   Backdrop,
+  Badge,
   BottomNavigation,
   BottomNavigationAction,
   Box,
@@ -543,6 +544,88 @@ function App() {
   const handleCloseToast = (event, reason) => {
     if (reason === "clickaway") return;
     setToast({ ...toast, open: false });
+  };
+
+  const Invite = () => {
+    return (
+      <div className="card shadow-sm border-0 p-4 mb-4">
+        <h5 className="fw-bold text-dark m-0 mb-3">Invite Friends</h5>
+        <span className="fw-semibold mb-3 small text-secondary">
+          Connect and share your meal plans with friends and family!
+        </span>
+        <div className="d-flex flex-wrap gap-3 align-items-center">
+          {/* you  */}
+          <Badge
+            variant="dot"
+            color="success"
+            overlap="circular"
+            badgeContent=" "
+            sx={{
+              "& .MuiBadge-dot": {
+                height: 15, // Default dot is 8px, standard is ~20px. 12px is the sweet spot.
+                width: 15,
+                borderRadius: "50%",
+              },
+            }}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <Avatar
+              style={{ width: 70, height: 70 }}
+              alt={profile?.display_name}
+              src={profile?.avatar_url}
+              title={`${profile?.display_name} (You)`}
+              className="border shadow-sm border-2 border-primary"
+            />
+          </Badge>
+          {others.map((friend, index) => (
+            <Avatar
+              title={friend.name}
+              src={friend.profile_pic}
+              key={index}
+              style={{ width: 70, height: 70 }}
+              className="border shadow-sm border-2 border-light"
+            />
+          ))}
+          <button
+            style={{ width: 50, height: 50 }}
+            className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
+          >
+            <AddOutlined size={20} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const Share = () => {
+    return (
+      <div className="card shadow-sm border-0 p-4 mb-4">
+        <h5 className="fw-bold text-dark m-0 mb-3">Share with Friends</h5>
+        <span className="fw-semibold mb-3 small text-secondary">
+          Share the joy of meal planning with your loved ones!
+        </span>
+        <div className="d-flex flex-wrap gap-3 align-items-center">
+          {["facebook", "twitter", "instagram", "whatsapp", "telegram"].map(
+            (social, index) => (
+              <button
+                key={index}
+                style={{ width: 40, height: 40 }}
+                onClick={() => {
+                  const shareData = {
+                    title: "Check out my meal plan!",
+                    text: "I've been using this awesome meal planner app to organize my meals. Check it out!",
+                  };
+                  navigator.share(shareData);
+                }}
+                className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
+              >
+                <i className={`fab fs-5 fa-${social}`}></i>
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+    );
   };
 
   const Auth = () => {
@@ -1130,12 +1213,27 @@ function App() {
                     role="button"
                     onClick={() => setCurrentPage(2)}
                   >
-                    <Avatar
-                      alt={profile?.display_name}
-                      sx={{ background: "rgba(255,255,255,0.18)" }}
-                      src={profile?.avatar_url}
-                      className="bg-light"
-                    />
+                    <Badge
+                      variant="dot"
+                      color="success"
+                      overlap="circular"
+                      badgeContent=" "
+                      sx={{
+                        "& .MuiBadge-dot": {
+                          height: 15, // Default dot is 8px, standard is ~20px. 12px is the sweet spot.
+                          width: 15,
+                          borderRadius: "50%",
+                        },
+                      }}
+                      anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                    >
+                      <Avatar
+                        alt={profile?.display_name}
+                        sx={{ background: "rgba(255,255,255,0.18)" }}
+                        src={profile?.avatar_url}
+                        className="bg-light"
+                      />
+                    </Badge>
                     <div className="d-flex flex-column">
                       <span className="fw-semibold">
                         {/* {profile?.display_name} */}
@@ -1654,38 +1752,9 @@ function App() {
                 </div>
 
                 {/* end of calendar */}
+                <Invite />
 
-                <div className="card shadow-sm border-0 p-4 mb-4">
-                  <h5 className="fw-bold text-dark m-0 mb-3">Invite Friends</h5>
-                  <span className="fw-semibold mb-3 small text-secondary">
-                    Share the joy of meal planning with your loved ones!
-                  </span>
-                  <div className="d-flex flex-wrap gap-3 align-items-center">
-                    {/* you  */}
-                    <Avatar
-                      style={{ width: 70, height: 70 }}
-                      alt={profile?.display_name}
-                      src={profile?.avatar_url}
-                      title={`${profile?.display_name} (You)`}
-                      className="border shadow-sm border-2 border-primary"
-                    />
-                    {others.map((friend, index) => (
-                      <Avatar
-                        title={friend.name}
-                        src={friend.profile_pic}
-                        key={index}
-                        style={{ width: 70, height: 70 }}
-                        className="border shadow-sm border-2 border-light"
-                      />
-                    ))}
-                    <button
-                      style={{ width: 50, height: 50 }}
-                      className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
-                    >
-                      <AddOutlined size={20} />
-                    </button>
-                  </div>
-                </div>
+                <Share />
               </section>
             ) : currentPage === 1 ? (
               <section>
@@ -1768,7 +1837,7 @@ function App() {
                                   {food}
                                 </div>
                               ))
-                          : "No suggestions available"}
+                          : "No more suggestions available!"}
                       </div>
                     </div>
 
@@ -1810,17 +1879,33 @@ function App() {
 
                   <div className="card shadow-sm border-0 p-4 mb-4">
                     <div className="d-flex align-items-center gap-3 mb-4 flex-wrap">
-                      <Avatar
+                      <Badge
+                        variant="dot"
+                        color="success"
+                        overlap="circular"
+                        badgeContent=" "
+                        anchorOrigin={{ vertical: "top", horizontal: "right" }}
                         sx={{
-                          bgcolor: "#6A0DAD",
-                          width: 72,
-                          height: 72,
-                          fontSize: "1.75rem",
+                          "& .MuiBadge-dot": {
+                            height: 15, // Default dot is 8px, standard is ~20px. 12px is the sweet spot.
+                            width: 15,
+                            borderRadius: "50%",
+                          },
                         }}
-                        src={profile?.avatar_url}
                       >
-                        {profile?.display_name?.[0]?.toUpperCase() || "U"}
-                      </Avatar>
+                        <Avatar
+                          className="border shadow-sm border-2 border-primary"
+                          sx={{
+                            // bgcolor: "#6A0DAD",
+                            width: 72,
+                            height: 72,
+                            fontSize: "1.75rem",
+                          }}
+                          src={profile?.avatar_url}
+                        >
+                          {profile?.display_name?.[0]?.toUpperCase() || "U"}
+                        </Avatar>
+                      </Badge>
                       <div>
                         <h4 className="mb-1">
                           {profile?.display_name || "Unknown"}
@@ -1988,38 +2073,7 @@ function App() {
                     </div>
                   </div>
                 </div>
-
-                <div className="card shadow-sm border-0 p-4 mb-4">
-                  <h5 className="fw-bold text-dark m-0 mb-3">Invite Friends</h5>
-                  <span className="fw-semibold mb-3 small text-secondary">
-                    Share the joy of meal planning with your loved ones!
-                  </span>
-                  <div className="d-flex flex-wrap gap-3 align-items-center">
-                    {/* you  */}
-                    <Avatar
-                      style={{ width: 70, height: 70 }}
-                      alt={profile?.display_name}
-                      src={profile?.avatar_url}
-                      title={`${profile?.display_name} (You)`}
-                      className="border shadow-sm border-2 border-primary"
-                    />
-                    {others.map((friend, index) => (
-                      <Avatar
-                        title={friend.name}
-                        src={friend.profile_pic}
-                        key={index}
-                        style={{ width: 70, height: 70 }}
-                        className="border shadow-sm border-2 border-light"
-                      />
-                    ))}
-                    <button
-                      style={{ width: 50, height: 50 }}
-                      className="text-dark border-0 rounded-circle d-flex align-items-center justify-content-center gap-2 shadow small"
-                    >
-                      <AddOutlined size={20} />
-                    </button>
-                  </div>
-                </div>
+                <Invite />
               </section>
             )}
             {/* Footer */}
