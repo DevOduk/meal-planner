@@ -115,3 +115,39 @@ body {
   color: #6a0dad;
   letter-spacing: 2px;
 }
+
+
+
+
+
+
+
+/* 1. The invisible sleeve that hides the printout from your users */
+.print-wrapper-hidden {
+  height: 0;
+  overflow: hidden;
+  position: relative;
+  width: 0; 
+}
+
+/* 2. Your beautifully designed target container */
+.print-only-target {
+  width: 1120px; 
+  background: white !important;
+  padding: 30px;
+  overflow: hidden;
+  /* aspect-ratio: 1.4 / 1; */
+}
+
+/* Crucial: Forces the gradient background to print accurately */
+.print-only-target,
+.print-only-target th, 
+.print-only-target td,
+.print-only-target div {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.extra-small {
+  font-size: 0.75rem;
+}
