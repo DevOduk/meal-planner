@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthProvider";
 
-export default function SignUpPage() {
+export default function Temp() {
   const { handleSignUp, loading, setToast } = useAuth();
   const [fullName, setFullName] = useState("");
   const [userName, setUserName] = useState("");
