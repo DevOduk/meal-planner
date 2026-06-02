@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "./context/AuthProvider";
 import AccountPage from "./pages/AccountPage";
 import { Backdrop, CircularProgress } from "@mui/material";
 import EditAccountPage from "./pages/EditAccountPage";
-import Temp from "./pages/Temp";
+import Temp from "./pages/SignUpPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading, profile } = useAuth();
