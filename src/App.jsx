@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "./context/AuthProvider";
 import AccountPage from "./pages/AccountPage";
 import { Backdrop, CircularProgress } from "@mui/material";
 import EditAccountPage from "./pages/EditAccountPage";
-import SignUp from "./pages/SignupPage";
+import SignUpPage from "./pages/SignUpPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading, profile } = useAuth();
@@ -134,7 +134,7 @@ function App() {
 
           {/* Public Auth Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route path="/reset" element={<ResetPassword />} />
 
           {/* Catch-All Fallback */}
