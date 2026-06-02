@@ -29,6 +29,8 @@ const style = {
   left: "50%",
   transform: "translate(-50%, -50%)",
   width: 600,
+    maxWidth: '95%',
+
   bgcolor: "background.paper",
   boxShadow: 4,
   borderRadius: 4,
@@ -46,11 +48,11 @@ const Invite = ({ profile }) => {
   );
 
   const handleClose = () => setOpen(false);
-  const others = [
-    { name: "Alice", profile_pic: "alice.jpg" },
-    { name: "Bob", profile_pic: "bob.jpg" },
-    { name: "Charlie", profile_pic: "charlie.jpg" },
-  ];
+  // const others = [
+  //   { name: "Alice", profile_pic: "alice.jpg" },
+  //   { name: "Bob", profile_pic: "bob.jpg" },
+  //   { name: "Charlie", profile_pic: "charlie.jpg" },
+  // ];
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -79,30 +81,50 @@ const Invite = ({ profile }) => {
   };
 
   const handleSendRequest = async () => {
-    if (!searchResult) return;
+  if (!searchResult || !user?.id) return;
 
-    const { error } = await supabase
-      .from("planner_friendships")
-      .insert({
-        sender_id: user.id,
-        receiver_id: searchResult.id,
-        status: "pending",
+  // 1. Check if they are ALREADY friends using your local friends list state
+  // Adjust 'f.friend_username' or 'f.username' based on how your friend object is structured
+  const isAlreadyFriend = friends?.some(
+    (f) => f.username === searchResult.username || f.friend_id === searchResult.id
+  );
+
+  if (isAlreadyFriend) {
+    setStatusMessage({ 
+      type: 'error', 
+      message: `You are already friends with @${searchResult.username}!` 
+    });
+    return; // Stop execution immediately
+  }
+
+  // 2. If not already friends, attempt the insertion
+  const { error } = await supabase
+    .from("planner_friendships")
+    .insert({
+      sender_id: user.id,
+      receiver_id: searchResult.id,
+      status: "pending",
+    });
+
+
+  if (error) {
+    // 3. Since we already filtered out existing friends, a 23505 error 
+    // here safely guarantees a pending request is the culprit.
+    if (error.code === "23505") {
+      setStatusMessage({ 
+        type: 'error', 
+        message: `A friend request to @${searchResult.username} is already pending! Wait for them to accept.` 
       });
-
-
-
-    if (error) {
-      if (error.code === "23505") {
-        setStatusMessage({ type: 'error', message: "You have already sent a request to this person! Wait for them to accept." });
-      } else {
-        setStatusMessage({ type: 'error', message: "Failed to send friend request." });
-      }
     } else {
-      setStatusMessage({ type: 'success', message: `Friend request sent to @${searchResult.username}!` });
-      setSearchResult(null);
-      setSearchQuery("");
+      setStatusMessage({ type: 'error', message: "Failed to send friend request." });
     }
-  };
+  } else {
+    // 🎉 Clean success path
+    setStatusMessage({ type: 'success', message: `Friend request sent to @${searchResult.username}!` });
+    setSearchResult(null);
+    setSearchQuery("");
+  }
+};
 
   const acceptRequest = async (friendshipId, senderId) => {
     try {
@@ -236,15 +258,17 @@ const Invite = ({ profile }) => {
                 Send a friend request to connect and share your meal plans together!
               </div>
               <div>
-                <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+                <form onSubmit={handleSearch} className="d-flex gap-2 align-items-center">
                   <TextField variant="standard"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="small w-100"
                     type="search"
                     label="Search by username" />
-                  <PersonSearchOutlinedIcon fontSize="large" className="border p-1 rounded bg-light" role="button" onClick={handleSearch} />
-                </Box>
+                  <button type="submit" className="border p-2 small text-light  px-3 rounded d-flex align-items-center gap-1 bg-success">
+                    <PersonSearchOutlinedIcon fontSize="small" role="button" /> Search
+                  </button>
+                </form>
                 {/* search friend by display name or email and send them a friend request. Once they accept, you can start sharing meal plans and recipes together! */}
                 <div>
                   {statusMessage.type === 'error' && <p className="mt-3 small text-danger"><WarningAmberOutlinedIcon fontSize="small" className="me-1" /> {statusMessage.message}</p>}
@@ -253,14 +277,14 @@ const Invite = ({ profile }) => {
                   {searchResult && (
                     <div className="d-flex bg-light shadow align-items-center mt-3 p-2 bg-light rounded-3">
                       <Avatar
-                        title={searchResult.display_name}
+                        title={searchResult.username}
                         src={searchResult.avatar_url}
-                        key={searchResult.display_name}
+                        key={searchResult.username}
                         style={{ width: 70, height: 70 }}
                         className="border shadow-sm border-2 bg-black"
                       />
                       <div className="mx-3">
-                        <p className="fw-bold m-0 mb-2">{searchResult.display_name} <span className="small m-0 mt-1">{"(User)"}</span></p>
+                        <p className="fw-bold m-0 mb-2">{searchResult.username} <span className="small m-0 mt-1">{"(User)"}</span></p>
                         <button className="border-0 small text-white p-1 px-3 rounded" onClick={handleSendRequest} style={{
                           background:
                             "linear-gradient(135deg, #6a0dad 0%, #392b8d 65%, #1f1a4b 100%)",
@@ -272,7 +296,7 @@ const Invite = ({ profile }) => {
               </div>
               <div className="d-flex justify-content-end mt-3">
                 <button
-                  className="py-2 px-3 w-auto authSignInBtn text-light small"
+                  className="py-2 px-3 w-auto authSignInBtn text-light small border-0 rounded-2"
                   onClick={handleClose}
                   style={{
                     background:

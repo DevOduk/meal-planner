@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import {
   AddOutlined,
+  FireExtinguisherRounded,
 } from "@mui/icons-material";
 import Invite from "@/components/Invite";
 import Share from "@/components/Share";
@@ -19,6 +20,7 @@ import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import InsertPhotoOutlinedIcon from '@mui/icons-material/InsertPhotoOutlined';
 import html2pdf from "html2pdf.js";
 import { toPng } from 'html-to-image';
+import { generateMealPlan } from '@/components/mealPlanGenerator';
 
 
 const style = {
@@ -27,6 +29,7 @@ const style = {
   left: "50%",
   transform: "translate(-50%, -50%)",
   // width: 400,
+  maxWidth: '95%',
   bgcolor: "background.paper",
   boxShadow: 4,
   borderRadius: 4,
@@ -40,7 +43,7 @@ import Footer from "@/components/Footer";
 export default function HomePage() {
   const [open, setOpen] = useState([false, {}, ""]);
   const handleClose = () => setOpen([false, {}, ""]);
-  const { profile, setProfile, setLoading } = useAuth();
+  const { profile, setProfile, setLoading, friends } = useAuth();
   const [currentDate] = useState(new Date());
   const seededRandom = useCallback((seed) => {
     const x = Math.sin(seed) * 10000;
@@ -50,158 +53,8 @@ export default function HomePage() {
   const domRef = useRef(null);
 
 
-  const generateMealPlan = useCallback(
-    (year, month, foodList) => {
-      const plan = {};
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const { breakfast, lunch, supper, fruits } = foodList;
 
-      // 1. Specialized History Buffers
-      const history = {
-        breakfast: [],
-        fruit: [],
-        recentMeals: [], // Tracks full strings (e.g., "Rice + Chicken") to stop back-to-back days
-        recentIngredients: [], // Tracks base items (e.g., "rice") with a short memory window
-      };
 
-      // Static safety windows optimized for your specific list sizes
-      const maxBreakfastHistory = Math.max(1, breakfast.length - 2); // Remembers last 5 days
-      // const maxFruitHistory = Math.max(1, fruits.length - 1);
-      // Remembers last 2 days
-      const maxFruitHistory = 2;
-      const maxMealHistory = 4; // Prevents exact lunch/supper combo duplication for 2 full days
-      const maxIngredientHistory = 8; // Remembers base ingredients for roughly 24 hours
-
-      // Helper to split and clean up meal ingredients safely
-      const getIngredients = (mealString) => {
-        if (!mealString) return [];
-        return mealString
-          .toLowerCase()
-          .split(/\s*\+\s*/)
-          .map((item) => item.trim());
-      };
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const seed = year * 10000 + month * 100 + day;
-
-        const getDiverseIndex = (
-          seedMultiplier,
-          list,
-          isMainMeal = false,
-          excludeIngredients = [],
-        ) => {
-          const seedValue = seededRandom(seed * seedMultiplier);
-
-          // --- NEW LOGIC FOR FRUITS & BREAKFAST ---
-          if (!isMainMeal) {
-            const targetHistory =
-              list === breakfast ? history.breakfast : history.fruit;
-
-            // 1. Gather all items from the list that are NOT in the history window
-            const validChoices = list.filter(
-              (item) => !targetHistory.includes(item),
-            );
-
-            // 2. If we have choices that don't violate history, pick randomly from THEM
-            if (validChoices.length > 0) {
-              const chosenItem =
-                validChoices[Math.floor(seedValue * validChoices.length)];
-              return list.indexOf(chosenItem);
-            }
-
-            // Fallback if history window is somehow completely full (impossible with window = 2 and list = 4)
-            return Math.floor(seedValue * list.length);
-          }
-
-          // --- MAIN MEAL LOGIC (LUNCH & SUPPER) ---
-          // Keeps your working tiered lookup for complex broken-down ingredient strings
-          const initialIndex = Math.floor(seedValue * list.length);
-          let backupIndex = -1;
-
-          for (let i = 0; i < list.length; i++) {
-            const index = (initialIndex + i) % list.length;
-            const selection = list[index];
-            const currentIngredients = getIngredients(selection);
-
-            const conflictsWithHistory = currentIngredients.some((ing) =>
-              history.recentIngredients.includes(ing),
-            );
-            const conflictsWithToday = currentIngredients.some((ing) =>
-              excludeIngredients.includes(ing),
-            );
-            const duplicateMealCombo = history.recentMeals.includes(selection);
-
-            if (
-              !duplicateMealCombo &&
-              !conflictsWithHistory &&
-              !conflictsWithToday
-            ) {
-              return index;
-            }
-            if (
-              !duplicateMealCombo &&
-              !conflictsWithToday &&
-              backupIndex === -1
-            ) {
-              backupIndex = index;
-            }
-          }
-
-          if (backupIndex !== -1) return backupIndex;
-          return initialIndex;
-        };
-
-        // 3. Process Selections Sequential Order
-        const bIndex = getDiverseIndex(1, breakfast, false);
-
-        // Get Lunch
-        const lIndex = getDiverseIndex(2, lunch, true);
-        const selectedLunch = lunch[lIndex];
-        const lunchIngredients = getIngredients(selectedLunch);
-
-        // Get Supper (Evaluates lunch ingredients to prevent overlap)
-        const sIndex = getDiverseIndex(3, supper, true, lunchIngredients);
-        const selectedSupper = supper[sIndex];
-        const supperIngredients = getIngredients(selectedSupper);
-
-        const fIndex = getDiverseIndex(4, fruits, false);
-
-        // 4. Populate Plan
-        plan[day] = {
-          breakfast: breakfast[bIndex],
-          lunch: selectedLunch,
-          supper: selectedSupper,
-          fruit: fruits[fIndex],
-        };
-
-        // 5. Commit Data to History Buffers
-        history.breakfast.push(breakfast[bIndex]);
-        if (history.breakfast.length > maxBreakfastHistory)
-          history.breakfast.shift();
-
-        history.fruit.push(fruits[fIndex]);
-        if (history.fruit.length > maxFruitHistory) history.fruit.shift();
-
-        // Main meals: Push full strings to history
-        history.recentMeals.push(selectedLunch, selectedSupper);
-        while (history.recentMeals.length > maxMealHistory) {
-          history.recentMeals.shift();
-        }
-
-        // Main meals: Push individual ingredients to history pool
-        history.recentIngredients.push(
-          ...lunchIngredients,
-          ...supperIngredients,
-        );
-        while (history.recentIngredients.length > maxIngredientHistory) {
-          history.recentIngredients.shift();
-        }
-      }
-
-      return plan;
-    },
-    [seededRandom],
-  );
   const mealPlan = useMemo(() => {
     if (!profile?.id) return {};
 
@@ -220,9 +73,30 @@ export default function HomePage() {
     );
   }, [profile?.id, profile?.meals, currentDate, generateMealPlan]);
 
+  // 🌟 Returns a reusable function closure that accepts a friend object
+  const friendsMealPlan = useMemo(() => {
+    return (friend) => {
+      if (!friend?.id) return {};
+
+      // If friend has no custom database list, fall back to empty categories
+      const currentFoods = friend.meals || {
+        breakfast: [],
+        lunch: [],
+        supper: [],
+        fruits: [],
+      };
+
+      // Computes deterministic plan mapping using your core diversity logic
+      return generateMealPlan(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentFoods
+      );
+    };
+  }, [currentDate, generateMealPlan]); // Tracks scope re-renders securely
+
+
   const todaysMeals = mealPlan[currentDate.getDate()] || null;
-
-
 
   const removeFood = async (category, foodToRemove) => {
     if (!profile?.id || !profile?.meals) return;
@@ -239,7 +113,7 @@ export default function HomePage() {
     const { error } = await supabase.from("planner_profiles").update({
       meals: updatedMeals,
     })
-        .eq("id", profile?.id);
+      .eq("id", profile?.id);
 
     if (error) {
       setToast({ open: true, message: "Failed to remove", severity: "error" });
@@ -283,40 +157,40 @@ export default function HomePage() {
     setToast({ ...toast, open: false });
   };
 
-const generateImage = useCallback(() => {
-  if (domRef.current === null) return;
-  setLoading(true);
+  const generateImage = useCallback(() => {
+    if (domRef.current === null) return;
+    setLoading(true);
 
-  toPng(domRef.current, { 
-    cacheBust: true,
-    // 🌟 SKIP trying to process third-party rules that trigger CORS issues
-    styleCacheFilter: (cssRule) => {
-      try {
-        // If we can't read the parent rule or text, skip it safely
-        if (!cssRule || !cssRule.cssText) return false;
-        
-        // Skip Bootstrap's inline SVG background images that cause the 400 errors
-        if (cssRule.cssText.includes('data:image/svg+xml')) return false;
-        
-        return true;
-      } catch (e) {
-        // Catches the SecurityError and ignores the broken third-party rule
-        return false; 
+    toPng(domRef.current, {
+      cacheBust: true,
+      // 🌟 SKIP trying to process third-party rules that trigger CORS issues
+      styleCacheFilter: (cssRule) => {
+        try {
+          // If we can't read the parent rule or text, skip it safely
+          if (!cssRule || !cssRule.cssText) return false;
+
+          // Skip Bootstrap's inline SVG background images that cause the 400 errors
+          if (cssRule.cssText.includes('data:image/svg+xml')) return false;
+
+          return true;
+        } catch (e) {
+          // Catches the SecurityError and ignores the broken third-party rule
+          return false;
+        }
       }
-    }
-  })
-    .then((dataUrl) => {
-      const link = document.createElement('a');
-      link.download = (profile?.username || 'user') + "_weekly-meal-plan.png";
-      link.href = dataUrl;
-      link.click();
-      setLoading(false);
     })
-    .catch((err) => {
-      console.error('Error generating image:', err);
-      setLoading(false); // Make sure loading states turn off if processing throws
-    });
-}, [domRef, profile]); // Added profile to dependencies since it's referenced inside
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = (profile?.username || 'user') + "_weekly-meal-plan.png";
+        link.href = dataUrl;
+        link.click();
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error generating image:', err);
+        setLoading(false); // Make sure loading states turn off if processing throws
+      });
+  }, [domRef, profile]); // Added profile to dependencies since it's referenced inside
 
   const generatePdf = () => {
     setLoading(true)
@@ -332,7 +206,6 @@ const generateImage = useCallback(() => {
 
     setLoading(false)
   };
-  // console.log("default: ", defaultFoods[newFood.category], "profile: ", profile?.meals?.[newFood.category], "todays: ", todaysMeals);
   return (
     <>
       <div className="min-vh-100 bg-light">
@@ -429,6 +302,215 @@ const generateImage = useCallback(() => {
               </div>
             )}
 
+
+            {
+              friends && friends.length > 0 && (
+                <div className="card shadow-sm border-0 p-4 mb-4">
+                  <h5 className="fw-bold text-dark mb-2">Your Friends</h5>
+                  <span className="fw-semibold mb-3 small text-secondary">
+                    {monthName}
+                  </span>
+                  <div className="row row-cols-1 row-cols-md-4 g-3 small">
+                    {friends.map((friend, i) => (
+                      <div key={i} className="col-6 col-md-3 mb-3">
+                        <div className="p-2 border rounded-3 bg-light sahdow w-100">
+                          <table className="table bg-transparent">
+                            <tbody>
+                              <tr>
+                                <td colSpan={2} className="mt-0 fw-bold p-2 border-0 text-primary">{friend.name}'s Meals Today</td>
+
+                              </tr>
+                              <tr>
+                                <td className="d-flex gap-2 align-items-center bg-transparent">
+                                  <i className="bi bi-cloud-sun"></i> Breakfast
+                                </td>
+                                <td className="fw-semibold bg-transparent">
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.breakfast || "?"}
+                                </td>
+
+                              </tr>
+                              <tr>
+                                <td className="d-flex gap-2 align-items-center bg-transparent">
+                                  <i className="bi bi-brightness-high"></i> Lunch
+                                </td>
+                                <td className="fw-semibold bg-transparent">
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.lunch || "?"}
+                                </td>
+
+                              </tr>
+                              <tr>
+                                <td className="d-flex gap-2 align-items-center bg-transparent">
+                                  <i className="bi bi-moon-stars"></i> Supper
+                                </td>
+                                <td className="fw-semibold bg-transparent text-no-wrap">
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.supper || "?"}
+                                </td>
+
+                              </tr>
+                              <tr>
+                                <td className="d-flex gap-2 align-items-center bg-transparent">
+                                  <i className="bi bi-apple"></i> Fruits/Salads
+                                </td>
+                                <td className="fw-semibold bg-transparent text-no-wrap">
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.fruit || "?"}
+                                </td>
+
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>))}
+                  </div>
+                </div>)
+            }
+
+
+
+
+
+
+
+            {/* generate PDF/Images Buttons and Calendar Grid */}
+            <div className="d-flex justify-content-end gap-3 mb-2">
+              <div className="btn small btn-outline-danger bg-transparent fw-600 py-2 d-flex align-items-center gap-2 text-danger hover-danger" onClick={
+                generatePdf
+              }>
+                <PictureAsPdfOutlinedIcon /> Export as PDF
+              </div>
+              <div className="btn small btn-outline-primary bg-transparent fw-600 py-2 d-flex align-items-center gap-2 text-primary" onClick={generateImage}>
+                <InsertPhotoOutlinedIcon /> Export as Image
+              </div>
+            </div>
+
+            <div className="card shadow-sm border-0 p-4 calendar mb-5">
+              <div style={{ overflowX: "auto" }}>
+                <div
+                  className="d-grid gap-2 w-100 mb-5"
+                  style={{
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    // minWidth: "800px", // Prevents squishing and maintains alignment on small screens
+                  }}
+                >
+                  {/* 1. Header Row (Sun-Sat) - Now sharing the same grid parent */}
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="text-center fw-bold text-muted py-2"
+                      >
+                        {day}
+                      </div>
+                    ),
+                  )}
+
+                  {/* 2. Empty cells for previous month padding */}
+                  {Array.from({ length: firstDay }).map((_, i) => (
+                    <div key={`empty-${i}`} className="" />
+                  ))}
+
+                  {/* 3. Calendar days */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const meals = mealPlan[day];
+                    const isToday = isCurrentMonth && day === today;
+                    const formattedDate = new Date(
+                      currentDate.getUTCFullYear(),
+                      currentDate.getMonth(),
+                      day,
+                    ).toLocaleString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    });
+                    return (
+                      <div
+                        key={day}
+                        className={`border rounded text-dark p-2 ${isToday
+                          ? "alert-success text-light border-success border-2 shadow"
+                          : "bg-white text-dark"
+                          }`}
+                        // style={{ minHeight: "120px" }}
+                        role="button"
+                        title={formattedDate}
+                        onClick={() => {
+                          const year = currentDate.getUTCFullYear();
+                          const month = currentDate.getMonth();
+                          const selectedDate = new Date(year, month, day);
+
+                          setOpen([true, meals, formattedDate]);
+                        }}
+                      >
+                        <div
+                          className={`small fw-semibold text-end mb-1 fs-5 ${isToday ? "text-success" : "text-muted"
+                            }`}
+                        >
+                          {day ?? 0}
+                        </div>
+                        <div
+                          className="flex-column gap-1 d-none d-md-flex"
+                          style={{ fontSize: "0.75rem" }}
+                        >
+                          <div
+                            className="bg-opacity-25 rounded p-1 text-dark"
+                          // title="Breakfast"
+                          >
+                            <div className="fw-bold mb-1">
+                              <i
+                                className="bi bi-cloud-sun"
+                                style={{ color: "orange" }}
+                              ></i>
+                            </div>
+                            <div className="text-truncate small">
+                              {meals?.breakfast || "?"}
+                            </div>
+                          </div>
+                          <div
+                            className="bg-opacity-25 rounded p-1 text-dark"
+                          // title="Lunch"
+                          >
+                            <div className="fw-bold mb-1">
+                              <i
+                                className="bi bi-brightness-high"
+                                style={{ color: "green" }}
+                              ></i>
+                            </div>
+                            <div className="text-truncate small">
+                              {meals?.lunch || "?"}
+                            </div>
+                          </div>
+                          <div
+                            className="bg-opacity-25 rounded p-1 text-dark"
+                          // title="Supper"
+                          >
+                            <div className="fw-bold mb-1">
+                              <i
+                                className="bi bi-moon-stars"
+                                style={{ color: "#6A0DAD" }}
+                              ></i>
+                            </div>
+                            <div className="text-truncate small">
+                              {meals?.supper || "?"}
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className="bg-opacity-25 shadow-sm d-none d-md-flex alert-success px-2 small mt-1 align-items-center gap-2 small rounded p-1 text-dark"
+                        // title="Fruits"
+                        >
+                          <div className="fw-bold">
+                            <i className="bi bi-apple"></i>
+                          </div>
+                          <div className="text-truncate">
+                            {meals?.fruit || "?"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
             <div className="card shadow-sm border-0 p-4 mb-4">
               <div className="alert alert-primary">
                 <strong>Usage Tips! </strong> You can customize your meals
@@ -696,152 +778,6 @@ const generateImage = useCallback(() => {
                 </Fade>
               </Modal>
             )}
-            <div className="d-flex justify-content-end gap-3 mb-2">
-              <div className="btn small btn-outline-danger bg-transparent fw-600 py-2 d-flex align-items-center gap-2 text-danger hover-danger" onClick={
-                generatePdf
-              }>
-                <PictureAsPdfOutlinedIcon /> Export as PDF
-              </div>
-              <div className="btn small btn-outline-primary bg-transparent fw-600 py-2 d-flex align-items-center gap-2 text-primary" onClick={generateImage}>
-                <InsertPhotoOutlinedIcon /> Export as Image
-              </div>
-            </div>
-
-            <div className="card shadow-sm border-0 p-4 calendar mb-5">
-              <div style={{ overflowX: "auto" }}>
-                <div
-                  className="d-grid gap-2 w-100 mb-5"
-                  style={{
-                    gridTemplateColumns: "repeat(7, 1fr)",
-                    // minWidth: "800px", // Prevents squishing and maintains alignment on small screens
-                  }}
-                >
-                  {/* 1. Header Row (Sun-Sat) - Now sharing the same grid parent */}
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div
-                        key={day}
-                        className="text-center fw-bold text-muted py-2"
-                      >
-                        {day}
-                      </div>
-                    ),
-                  )}
-
-                  {/* 2. Empty cells for previous month padding */}
-                  {Array.from({ length: firstDay }).map((_, i) => (
-                    <div key={`empty-${i}`} className="" />
-                  ))}
-
-                  {/* 3. Calendar days */}
-                  {Array.from({ length: daysInMonth }).map((_, i) => {
-                    const day = i + 1;
-                    const meals = mealPlan[day];
-                    const isToday = isCurrentMonth && day === today;
-                    const formattedDate = new Date(
-                      currentDate.getUTCFullYear(),
-                      currentDate.getMonth(),
-                      day,
-                    ).toLocaleString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    });
-                    return (
-                      <div
-                        key={day}
-                        className={`border rounded text-dark p-2 ${isToday
-                          ? "alert-success text-light border-success border-2 shadow"
-                          : "bg-white text-dark"
-                          }`}
-                        // style={{ minHeight: "120px" }}
-                        role="button"
-                        title={formattedDate}
-                        onClick={() => {
-                          const year = currentDate.getUTCFullYear();
-                          const month = currentDate.getMonth();
-                          const selectedDate = new Date(year, month, day);
-
-                          setOpen([true, meals, formattedDate]);
-                          // console.log(
-                          //   "Selected date:",
-                          //   selectedDate,
-                          //   "Meals: ",
-                          //   meals,
-                          // );
-                        }}
-                      >
-                        <div
-                          className={`small fw-semibold text-end mb-1 fs-5 ${isToday ? "text-success" : "text-muted"
-                            }`}
-                        >
-                          {day ?? 0}
-                        </div>
-                        <div
-                          className="flex-column gap-1 d-none d-md-flex"
-                          style={{ fontSize: "0.75rem" }}
-                        >
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                          // title="Breakfast"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-cloud-sun"
-                                style={{ color: "orange" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals?.breakfast || "?"}
-                            </div>
-                          </div>
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                          // title="Lunch"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-brightness-high"
-                                style={{ color: "green" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals?.lunch || "?"}
-                            </div>
-                          </div>
-                          <div
-                            className="bg-opacity-25 rounded p-1 text-dark"
-                          // title="Supper"
-                          >
-                            <div className="fw-bold mb-1">
-                              <i
-                                className="bi bi-moon-stars"
-                                style={{ color: "#6A0DAD" }}
-                              ></i>
-                            </div>
-                            <div className="text-truncate small">
-                              {meals?.supper || "?"}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          className="bg-opacity-25 shadow-sm d-none d-md-flex alert-success px-2 small mt-1 align-items-center gap-2 small rounded p-1 text-dark"
-                        // title="Fruits"
-                        >
-                          <div className="fw-bold">
-                            <i className="bi bi-apple"></i>
-                          </div>
-                          <div className="text-truncate">
-                            {meals?.fruit || "?"}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
 
             {/* end of calendar */}
             <Invite profile={profile} />

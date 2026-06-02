@@ -149,7 +149,6 @@ export const AuthProvider = ({ children }) => {
         setFriends([]);
         setLoading(false);
         if (event === "SIGNED_OUT") {
-          setToast({ open: true, message: "Logged out successfully!", severity: "success" });
           navigate("/login");
         }
       }

@@ -10,6 +10,7 @@ import AccountPage from "./pages/AccountPage";
 import { Backdrop, CircularProgress } from "@mui/material";
 import EditAccountPage from "./pages/EditAccountPage";
 import SignUpPage from "./pages/SignUpPage";
+import Shopping from "./pages/Shopping";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading, profile } = useAuth();
@@ -128,6 +129,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddMeal />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/shopping"
+            element={
+              <ProtectedRoute>
+                <Shopping />
               </ProtectedRoute>
             }
           />

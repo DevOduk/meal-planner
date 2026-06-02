@@ -279,7 +279,7 @@ function AccountPage() {
                 </div>
                 <Invite profile={profile} />
             </section>
-            <BottomBar currentPage={2} />
+            <BottomBar currentPage={3} />
             <Footer />
         </div>
     )
