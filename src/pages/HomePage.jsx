@@ -312,7 +312,7 @@ export default function HomePage() {
                   </span>
                   <div className="row row-cols-1 row-cols-md-4 g-3 small">
                     {friends.map((friend, i) => (
-                      <div key={i} className="col-6 col-md-3 mb-3">
+                      <div key={i} className="col-12 col-md-6 col-lg-3 mb-3">
                         <div className="p-2 border rounded-3 bg-light sahdow w-100">
                           <table className="table bg-transparent">
                             <tbody>
@@ -324,7 +324,7 @@ export default function HomePage() {
                                 <td className="d-flex gap-2 align-items-center bg-transparent">
                                   <i className="bi bi-cloud-sun"></i> Breakfast
                                 </td>
-                                <td className="fw-semibold bg-transparent">
+                                <td className="fw-semibold bg-transparent text-nowrap">
                                   {friendsMealPlan(friend)[currentDate.getDate()]?.breakfast || "?"}
                                 </td>
 
@@ -333,7 +333,7 @@ export default function HomePage() {
                                 <td className="d-flex gap-2 align-items-center bg-transparent">
                                   <i className="bi bi-brightness-high"></i> Lunch
                                 </td>
-                                <td className="fw-semibold bg-transparent">
+                                <td className="fw-semibold bg-transparent text-nowrap">
                                   {friendsMealPlan(friend)[currentDate.getDate()]?.lunch || "?"}
                                 </td>
 
@@ -342,7 +342,7 @@ export default function HomePage() {
                                 <td className="d-flex gap-2 align-items-center bg-transparent">
                                   <i className="bi bi-moon-stars"></i> Supper
                                 </td>
-                                <td className="fw-semibold bg-transparent text-no-wrap">
+                                <td className="fw-semibold bg-transparent text-nowrap">
                                   {friendsMealPlan(friend)[currentDate.getDate()]?.supper || "?"}
                                 </td>
 
@@ -351,7 +351,7 @@ export default function HomePage() {
                                 <td className="d-flex gap-2 align-items-center bg-transparent">
                                   <i className="bi bi-apple"></i> Fruits/Salads
                                 </td>
-                                <td className="fw-semibold bg-transparent text-no-wrap">
+                                <td className="fw-semibold bg-transparent text-nowrap">
                                   {friendsMealPlan(friend)[currentDate.getDate()]?.fruit || "?"}
                                 </td>
 
