@@ -195,10 +195,10 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
-  const handleUpdate = async (email, password, userName, fullName, phone) => {
+  const handleUpdate = async (email, password, userName, fullName, phone, profilePicture) => {
     setLoading(true);
 
-    console.log("Initiating account update with:", { email, password, userName, fullName, phone });
+    console.log("Initiating account update with:", { email, password, userName, fullName, phone, profilePicture });
 
     const cleanUsername = userName.trim().toLowerCase();
     const cleanEmail = email.trim().toLowerCase();
@@ -230,7 +230,8 @@ export const AuthProvider = ({ children }) => {
         .update({
           username: cleanUsername,
           full_name: fullName.trim(), // Matches your newly renamed column!
-          phone: phone.trim() // Add the phone number update
+          phone: phone.trim(), // Add the phone number update
+          avatar_url: profilePicture.trim(), // Add the phone number update
         })
         .eq("id", user.id);
 
@@ -267,7 +268,7 @@ export const AuthProvider = ({ children }) => {
             message: "Profile updated! Confirm your change via the links sent to both your old and new email addresses.",
             severity: "info"
           });
-          setProfile((prev) => ({ ...prev, username: cleanUsername, full_name: fullName.trim(), phone: phone.trim() }));
+          setProfile((prev) => ({ ...prev, username: cleanUsername, full_name: fullName.trim(), phone: phone.trim(), avatar_url: profilePicture.trim() }));
           setLoading(false);
           return true;
         }
@@ -275,7 +276,7 @@ export const AuthProvider = ({ children }) => {
 
       setToast({ open: true, message: "Changes saved successfully!", severity: "success" });
       setLoading(false);
-      setProfile((prev) => ({ ...prev, username: cleanUsername, full_name: fullName.trim(), phone: phone.trim() }));
+      setProfile((prev) => ({ ...prev, username: cleanUsername, full_name: fullName.trim(), phone: phone.trim(), avatar_url: profilePicture.trim() }));
       return true;
 
     } catch (error) {

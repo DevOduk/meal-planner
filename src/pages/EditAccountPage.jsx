@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from "@/context/AuthProvider";
 import { useNavigate } from "react-router-dom"; // Added missing navigate hook
 import BottomBar from "@/components/BottomBar";
@@ -6,6 +6,7 @@ import TopHeader from "@/components/TopHeader";
 import { Avatar, Badge } from "@mui/material";
 import Invite from "@/components/Invite";
 import Footer from '@/components/Footer';
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined"
 
 function EditAccountPage() {
     const { profile, user, handleUpdate, setError, error } = useAuth();
@@ -19,7 +20,60 @@ function EditAccountPage() {
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmNewPassword, setConfirmNewPassword] = useState("");
+    const [profilePicture, setProfilePicture] = useState("");
+    const fileInputRef = useRef(null);
 
+    const handleAvatarClick = () => {
+        // Triggers the hidden file input when the avatar is clicked
+        fileInputRef.current.click();
+    };
+
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+
+            img.onload = () => {
+                // Create a canvas to resize/compress the image
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 350; // Ideal size for a profile avatar
+                const MAX_HEIGHT = 350;
+                let width = img.width;
+                let height = img.height;
+
+                // Maintain aspect ratio
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to Base64 webp or jpeg with compression quality (0.7 = 70% quality)
+                // This drastically shortens the final Base64 string length
+                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                // Set your state with the shortened Base64 string
+                setProfilePicture(optimizedBase64);
+                console.log("Optimized Base64 Length:", optimizedBase64.length);
+            };
+        };
+    };
     // 3. Populate fields ONLY when the profile finishes loading for the first time
     useEffect(() => {
         if (profile && user) {
@@ -42,7 +96,7 @@ function EditAccountPage() {
         }
 
         // Pass clean values directly to your context controller function
-        await handleUpdate(email, newPassword, username, fullName, phone);
+        await handleUpdate(email, newPassword, username, fullName, phone, profilePicture);
 
         // Clear passwords fields on successful update
         setOldPassword("");
@@ -77,30 +131,60 @@ function EditAccountPage() {
 
                     <div className="card shadow-sm border-0 p-4 mb-4">
                         <div className="d-flex align-items-center gap-3 mb-4 flex-wrap">
-                            <Badge
-                                variant="dot"
-                                color="success"
-                                overlap="circular"
-                                badgeContent=" "
-                                anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                                sx={{
-                                    "& .MuiBadge-dot": {
-                                        height: 15,
-                                        width: 15,
-                                        borderRadius: "50%",
-                                    },
-                                }}
-                            >
-                                <Avatar
-                                    className="border shadow-sm border-2 border-primary"
-                                    sx={{ width: 72, height: 72, fontSize: "1.75rem" }}
-                                    src={profile?.avatar_url}
-                                />
-                            </Badge>
+                            <div className='d-flex flex-column align-items-center justify-content-center'>
+                                <Badge
+                                    variant="dot"
+                                    color="success"
+                                    overlap="circular"
+                                    badgeContent=" "
+                                    anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                                    sx={{
+                                        "& .MuiBadge-dot": {
+                                            height: 15,
+                                            width: 15,
+                                            borderRadius: "50%",
+                                        },
+                                    }}
+                                >
+                                    {/* Clickable Avatar */}
+                                    <Avatar
+                                        className="border m-auto shadow-sm border-2 border-primary"
+                                        sx={{
+                                            width: 72,
+                                            height: 72,
+                                            fontSize: "1.75rem",
+                                            cursor: "pointer", // Gives the user a visual cue it's clickable
+                                            '&:hover': { opacity: 0.8 } // Nice hover effect
+                                        }}
+                                        // Fallback to the newly uploaded profilePicture if it exists
+                                        src={profilePicture || profile?.avatar_url}
+                                        onClick={handleAvatarClick}
+                                    />
+                                </Badge>
+
+                                <div role='button' className='position-relative d-flex flex-column justify-content-center cursor-pointer'>
+                                    {/* Hidden File Input */}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        accept="image/*"
+                                        style={{ opacity: '0', zIndex: 3, cursor: 'pointer' }}
+                                        className='w-100 h-100 border position-absolute'
+                                    />
+                                    <div className='bg-primary mt-3 m-auto rounded-2 p-2 px-3 small text-light'>
+                                        <ImageOutlinedIcon fontSize='small' /> Update Picture
+                                    </div>
+                                </div>
+
+                            </div>
                             <div>
-                                <h4 className="mb-1">
-                                    {profile?.full_name || profile?.username || "Unknown"}
+                                <h4 className="mb-2">
+                                    {profile?.full_name || profile?.username || "Unknown"} (You)
                                 </h4>
+                                <div className="small mb-2 text-primary">
+                                    @{profile?.username || "Unknown"}
+                                </div>
                                 <div className="small text-muted">
                                     {profile?.gender || "Not specified"} |{" "}
                                     {profile?.age_group?.toUpperCase() || "N/A"}
@@ -263,7 +347,7 @@ function EditAccountPage() {
                 </div>
                 <Invite profile={profile} />
             </section>
-            <BottomBar currentPage={2} />
+            <BottomBar currentPage={3} />
             <Footer />
         </div>
     );

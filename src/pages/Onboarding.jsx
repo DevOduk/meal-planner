@@ -3,52 +3,8 @@ import { useAuth } from "@/context/AuthProvider";
 import { useNavigate } from "react-router-dom"; // Or useRouter if using Next.js/Vite equivalent
 import { supabase } from "../supabaseClient"; // Adjust path as needed
 import Chip from "@mui/material/Chip"; // Double check your Material UI import match
+import { defaultFoods } from "./AddMeal";
 
-const defaultFoods = {
-    breakfast: [
-        "Chai + Mandazi",
-        "Porridge",
-        "Bread + Eggs",
-        "Chapati + Beans",
-        "Pancakes",
-        "Yams",
-        "Sweet Potatoes",
-    ],
-    lunch: [
-        "Rice + Beans",
-        "Ugali + Sukuma",
-        "Pilau",
-        "Githeri",
-        "Rice + Beef Stew",
-        "Ugali + Fish",
-        "Chapati + Chicken",
-        "Fries + Chips + Salad",
-    ],
-    supper: [
-        "Ugali + Sukuma",
-        "Rice + Vegetables",
-        "Chapati + Stew",
-        "Ugali + Beans",
-        "Rice + Chicken",
-        "Mukimo",
-        "Ugali + Beef",
-        "Pilau",
-        "Githeri",
-        "Ugali + Fish",
-        "Rice + Beef Stew",
-    ],
-    fruits: [
-        "Banana",
-        "Mango",
-        "Watermelon",
-        "Pineapple",
-        "Lettuce",
-        "Orange",
-        "Avocado",
-        "Apples",
-        "Fruit Salad",
-    ],
-};
 
 const Onboarding = () => {
     const { user, profile,setProfile } = useAuth(); // Grab user context
@@ -240,7 +196,7 @@ const Onboarding = () => {
                                     background: isValid ? "#6A0DAD" : "#ccc",
                                     cursor: isValid ? "pointer" : "not-allowed",
                                 }}
-                                className="p-2 px-4 text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow small"
+                                className="p-2 px-4 ms-auto text-light border-0 rounded-3 d-flex align-items-center gap-2 shadow small"
                                 onClick={handleComplete}
                             >
                                 Finish & Generate Plan

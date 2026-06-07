@@ -317,7 +317,7 @@ export default function HomePage() {
                           <table className="table bg-transparent">
                             <tbody>
                               <tr>
-                                <td colSpan={2} className="mt-0 fw-bold p-2 border-0 text-primary">{friend.name}'s Meals Today</td>
+                                <td colSpan={2} className="mt-0 fw-bold p-2 border-0 text-primary bg-transparent">{friend.name}'s Meals Today</td>
 
                               </tr>
                               <tr>
@@ -325,7 +325,7 @@ export default function HomePage() {
                                   <i className="bi bi-cloud-sun"></i> Breakfast
                                 </td>
                                 <td className="fw-semibold bg-transparent text-nowrap">
-                                  {friendsMealPlan(friend)[currentDate.getDate()]?.breakfast || "?"}
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.breakfast || "Breakfast Food"}
                                 </td>
 
                               </tr>
@@ -334,7 +334,7 @@ export default function HomePage() {
                                   <i className="bi bi-brightness-high"></i> Lunch
                                 </td>
                                 <td className="fw-semibold bg-transparent text-nowrap">
-                                  {friendsMealPlan(friend)[currentDate.getDate()]?.lunch || "?"}
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.lunch || "Lunch Food"}
                                 </td>
 
                               </tr>
@@ -343,7 +343,7 @@ export default function HomePage() {
                                   <i className="bi bi-moon-stars"></i> Supper
                                 </td>
                                 <td className="fw-semibold bg-transparent text-nowrap">
-                                  {friendsMealPlan(friend)[currentDate.getDate()]?.supper || "?"}
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.supper || "Supper Food"}
                                 </td>
 
                               </tr>
@@ -352,7 +352,7 @@ export default function HomePage() {
                                   <i className="bi bi-apple"></i> Fruits/Salads
                                 </td>
                                 <td className="fw-semibold bg-transparent text-nowrap">
-                                  {friendsMealPlan(friend)[currentDate.getDate()]?.fruit || "?"}
+                                  {friendsMealPlan(friend)[currentDate.getDate()]?.fruit || "Some Fruit"}
                                 </td>
 
                               </tr>
@@ -462,7 +462,7 @@ export default function HomePage() {
                               ></i>
                             </div>
                             <div className="text-truncate small">
-                              {meals?.breakfast || "?"}
+                              {meals?.breakfast || "Breakfast Food"}
                             </div>
                           </div>
                           <div
@@ -476,7 +476,7 @@ export default function HomePage() {
                               ></i>
                             </div>
                             <div className="text-truncate small">
-                              {meals?.lunch || "?"}
+                              {meals?.lunch || "Lunch Food"}
                             </div>
                           </div>
                           <div
@@ -490,7 +490,7 @@ export default function HomePage() {
                               ></i>
                             </div>
                             <div className="text-truncate small">
-                              {meals?.supper || "?"}
+                              {meals?.supper || "Supper Food"}
                             </div>
                           </div>
                         </div>
@@ -502,7 +502,7 @@ export default function HomePage() {
                             <i className="bi bi-apple"></i>
                           </div>
                           <div className="text-truncate">
-                            {meals?.fruit || "?"}
+                            {meals?.fruit || "Some Fruit"}
                           </div>
                         </div>
                       </div>

@@ -14,15 +14,21 @@ import { useLocation } from "react-router-dom";
 import Invite from "@/components/Invite";
 
 
-const defaultFoods = {
+export const defaultFoods = {
     breakfast: [
         "Chai + Mandazi",
-        "Porridge",
-        "Bread + Eggs",
+        "Chai + Bread",
+        "Porridge/Uji Power",
+        "Chai + Bread + Eggs",
         "Chapati + Beans",
         "Pancakes",
-        "Yams",
-        "Sweet Potatoes",
+        "Chai + Cassava",
+        "Uji + Cassava",
+        "Chai + Sweet Potatoes",
+        "Chai + Nduma (Arrowroot)",
+        "Chai + Chapati",
+        "Chai + Samosa",
+        "Chai + Bread + Suasages"
     ],
     lunch: [
         "Rice + Beans",
@@ -30,9 +36,12 @@ const defaultFoods = {
         "Pilau",
         "Githeri",
         "Rice + Beef Stew",
+        "Ugali + Beef Stew",
         "Ugali + Fish",
         "Chapati + Chicken",
-        "Fries + Chips + Salad",
+        "Fries + Chicken Wings + Salad",
+        "Ugali + Nyama Choma + Kachumbari",
+        "Matoke (Green Bananas)"
     ],
     supper: [
         "Ugali + Sukuma",
@@ -46,19 +55,27 @@ const defaultFoods = {
         "Githeri",
         "Ugali + Fish",
         "Rice + Beef Stew",
+        "Ugali + Managu (African Nightshade)",
+        "Mursik + Ugali",
+        "Chapati + Chicken",
+        "Ugali + Chicken",
+        "Ugali + Nyama Choma + Kachumbari",
+        "Matoke (Green Bananas)"
     ],
     fruits: [
         "Banana",
         "Mango",
         "Watermelon",
         "Pineapple",
-        "Lettuce",
         "Orange",
         "Avocado",
         "Apples",
         "Fruit Salad",
+        "Pawpaw (Papaya)",
+        "Passion Fruit"
     ],
 };
+
 
 
 function AddMeal() {
@@ -180,7 +197,7 @@ function AddMeal() {
                 <div className="bg-light p-3 rounded mb-3 mt-3 border">
                     <p className="form-label mb-2">
                         Add New Food (Use " + " to separate food combinations i.e
-                        Fries + Chips + Salad)
+                        Fries + Chicken Wings + Salad)
                     </p>
 
                     <div className="row gx-3 gy-3 align-items-center">
@@ -222,7 +239,7 @@ function AddMeal() {
                         <div className="col-12 d-flex gap-3 mb-3 justify-content-start align-items-start flex-wrap">
                             <p className="form-label fw-semibold m-0 w-auto">Quick Add: </p>
                             <div className="d-flex flex-column w-100 flex-wrap gap-2 justify-content-start align-items-start">
-                                <div className="text-danger d-flex flex-row-reverse gap-2">
+                                <div className="text-danger d-flex flex-wrap gap-2">
                                     {defaultFoods[newFood.category]?.filter(
                                         (food) =>
                                             !profile?.meals[newFood.category]?.includes(food),
@@ -239,7 +256,7 @@ function AddMeal() {
                                                     role="button"
                                                     key={food}
                                                     onClick={() => setNewFood({ ...newFood, name: food })}
-                                                    className="p-1 px-3 text-primary border border-primary rounded-pill small d-flex align-items-center justify-content-center gap-2 shadow-0"
+                                                    className="p-1 text-nowrap px-3 text-primary border border-primary rounded-pill small d-flex align-items-center justify-content-center gap-2 shadow-0"
                                                     style={{ cursor: "pointer", transition: "all 0.2s", backgroundColor: newFood.name === food ? "#0080ff2f" : "transparent" }}
                                                 >
                                                     <span>+</span> {food}
@@ -280,7 +297,7 @@ function AddMeal() {
                                                                             role="button"
                                                                             key={food}
                                                                             onClick={() => setNewFood({ ...newFood, name: food })}
-                                                                            className="p-1 px-3 text-primary border border-primary rounded-pill small d-flex align-items-center justify-content-center gap-2 shadow-0"
+                                                                            className="p-1 px-3 text-nowrap text-primary border border-primary rounded-pill small d-flex align-items-center justify-content-center gap-2 shadow-0"
                                                                             style={{ cursor: "pointer", transition: "all 0.2s", backgroundColor: newFood.name === food ? "#0080ff2f" : "transparent" }}
                                                                         >
                                                                             <span>+</span> {food}

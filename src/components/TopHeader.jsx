@@ -27,7 +27,7 @@ const TopHeader = ({ profile }) => {
             <div className="d-flex mb-4 justify-content-between align-items-center gap-3">
               <div className="">
                 <div className="h4 fw-bold mb-1">
-                  Hello {profile?.full_name || profile?.username || "Planner"}!,
+                  Hello {profile?.full_name || profile?.username || "Planner"},
                 </div>
 
                 <div className="small">Lets plan what to eat together.</div>
