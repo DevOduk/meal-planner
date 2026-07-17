@@ -71,7 +71,9 @@ export default function HomePage() {
       currentDate.getMonth(),
       currentFoods,
     );
-  }, [profile?.id, profile?.meals, currentDate, generateMealPlan]);
+  }, [profile, currentDate]);
+
+
 
   // 🌟 Returns a reusable function closure that accepts a friend object
   const friendsMealPlan = useMemo(() => {
@@ -93,7 +95,7 @@ export default function HomePage() {
         currentFoods
       );
     };
-  }, [currentDate, generateMealPlan]); // Tracks scope re-renders securely
+  }, [currentDate]); // Tracks scope re-renders securely
 
 
   const todaysMeals = mealPlan[currentDate.getDate()] || null;
