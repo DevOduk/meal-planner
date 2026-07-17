@@ -24,8 +24,8 @@ const generateMealPlan = (year, month, foodList) => {
       // const maxFruitHistory = Math.max(1, fruits.length - 1);
       // Remembers last 2 days
       const maxFruitHistory = 2;
-      const maxMealHistory = 4; // Prevents exact lunch/supper combo duplication for 2 full days
-      const maxIngredientHistory = 8; // Remembers base ingredients for roughly 24 hours
+      const maxMealHistory = 2; // Prevents exact lunch/supper combo duplication for 2 full days
+      const maxIngredientHistory = 2; // Remembers base ingredients for roughly 24 hours
 
       // Helper to split and clean up meal ingredients safely
       const getIngredients = (mealString) => {
