@@ -1,85 +1,98 @@
-# Meal Planner
+<div align="center" id="top"> 
+  <img src="./.github/app.gif" alt="Meal Planner" />
 
-A React + Vite meal planning application with Supabase authentication, onboarding, and daily meal generation.
+  &#xa0;
 
-## Features
+  <!-- <a href="https://mealplanner.netlify.app">Demo</a> -->
+</div>
 
-- Email/password user authentication via Supabase
-- Onboarding flow for user preferences and starter meals
-- Daily meal planner with breakfast, lunch, supper, and fruit selections
-- Calendar view that displays meals for each day
-- Add and remove custom foods
-- Account page with profile details and logout
-- Responsive bottom navigation for mobile and desktop
+<h1 align="center">Meal Planner</h1>
 
-## Tech stack
+<p align="center">
+  <img alt="Github top language" src="https://img.shields.io/github/languages/top/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8">
 
-- React 19
-- Vite
-- Supabase JS
-- Material UI
-- Bootstrap
-- Tailwind CSS support
+  <img alt="Github language count" src="https://img.shields.io/github/languages/count/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8">
 
-## Project structure
+  <img alt="Repository size" src="https://img.shields.io/github/repo-size/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8">
 
-- `src/App.jsx` — main app logic and UI
-- `src/supabaseClient.js` — Supabase client initialization
-- `src/main.jsx` — React entry point
-- `src/index.css` — global styling
+  <img alt="License" src="https://img.shields.io/github/license/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8">
 
-## Setup
+  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8" /> -->
 
-1. Install dependencies
+  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8" /> -->
+
+  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/{{YOUR_GITHUB_USERNAME}}/meal-planner?color=56BEB8" /> -->
+</p>
+
+<!-- Status -->
+
+<!-- <h4 align="center"> 
+	🚧  Meal Planner 🚀 Under construction...  🚧
+</h4> 
+
+<hr> -->
+
+<p align="center">
+  <a href="#dart-about">About</a> &#xa0; | &#xa0; 
+  <a href="#sparkles-features">Features</a> &#xa0; | &#xa0;
+  <a href="#rocket-technologies">Technologies</a> &#xa0; | &#xa0;
+  <a href="#white_check_mark-requirements">Requirements</a> &#xa0; | &#xa0;
+  <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
+  <a href="#memo-license">License</a> &#xa0; | &#xa0;
+  <a href="https://github.com/{{YOUR_GITHUB_USERNAME}}" target="_blank">Author</a>
+</p>
+
+<br>
+
+## :dart: About ##
+
+Describe your project
+
+## :sparkles: Features ##
+
+:heavy_check_mark: Feature 1;\
+:heavy_check_mark: Feature 2;\
+:heavy_check_mark: Feature 3;
+
+## :rocket: Technologies ##
+
+The following tools were used in this project:
+
+- [Expo](https://expo.io/)
+- [Node.js](https://nodejs.org/en/)
+- [React](https://pt-br.reactjs.org/)
+- [React Native](https://reactnative.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+
+## :white_check_mark: Requirements ##
+
+Before starting :checkered_flag:, you need to have [Git](https://git-scm.com) and [Node](https://nodejs.org/en/) installed.
+
+## :checkered_flag: Starting ##
 
 ```bash
-npm install
+# Clone this project
+$ git clone https://github.com/{{YOUR_GITHUB_USERNAME}}/meal-planner
+
+# Access
+$ cd meal-planner
+
+# Install dependencies
+$ yarn
+
+# Run the project
+$ yarn start
+
+# The server will initialize in the <http://localhost:3000>
 ```
 
-2. Create a `.env` file at the project root with your Supabase credentials:
+## :memo: License ##
 
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-public-key
-```
+This project is under license from MIT. For more details, see the [LICENSE](LICENSE.md) file.
 
-3. Start the development server
 
-```bash
-npm run dev
-```
+Made with :heart: by <a href="https://github.com/{{YOUR_GITHUB_USERNAME}}" target="_blank">{{YOUR_NAME}}</a>
 
-## Build
+&#xa0;
 
-```bash
-npm run build
-```
-
-## Preview production build
-
-```bash
-npm run preview
-```
-
-## Linting
-
-```bash
-npm run lint
-```
-
-## Supabase notes
-
-- `src/supabaseClient.js` reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from env variables.
-- `planner_profiles` stores app-specific user data such as meals, onboarding state, and profile values.
-- Use Supabase auth data for authoritative fields like `email`, `email_confirmed_at`, `created_at`, and `last_sign_in_at`.
-
-## Recommended improvements
-
-- Separate UI into reusable components
-- Add explicit loading and error states
-- Improve Supabase RLS policies for secure profile access
-- Sync auth user data and app profile data more reliably
-
-## License
-
-This repository has no license configured yet. Add one if you want to share it publicly.
+<a href="#top">Back to top</a>
